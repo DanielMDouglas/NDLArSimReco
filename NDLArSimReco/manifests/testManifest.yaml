@@ -1,0 +1,102 @@
+trainfile: /sdf/group/neutrino/kterao/singlep_uq/data/train.root
+testfile: /sdf/group/neutrino/kterao/singlep_uq/data/test.root
+
+outdir: /sdf/home/d/dougl215/studies/NDLArForward/NDLArForward/testOuput
+
+nEpochs: 10
+
+layers:
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 3
+- type: MBatchNorm
+- type: MReLU
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 5
