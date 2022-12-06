@@ -4,7 +4,7 @@ import torch
 import random
 # random.seed(12)
 
-from network import ConfigurableNetwork
+from network import ConfigurableSparseNetwork
 
 import yaml
 import os
@@ -15,7 +15,7 @@ def main(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
-    net = ConfigurableNetwork(in_feat=1, out_feat=5, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(in_feat=1, out_feat=5, D=3, manifest = manifest).to(device)
 
     if args.force:
         # remove previous checkpoints

@@ -1,0 +1,14 @@
+trainfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_01bb6c9f-8ff4-407d-a11d-9e1bdf385c21.h5
+testfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_01bb6c9f-8ff4-407d-a11d-9e1bdf385c21.h5
+outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
+
+nEpochs: 1
+
+layers:
+
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 5

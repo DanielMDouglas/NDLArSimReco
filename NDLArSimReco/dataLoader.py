@@ -25,7 +25,11 @@ class DataLoader:
                                               use_builtin = True)
     
     def sampleLoadOrder(self):
-        self.loadOrder = np.arange(self.t0_grp.shape[0])
+        # self.loadOrder = np.arange(self.t0_grp.shape[0])
+        nBatches = self.t0_grp.shape[0]
+        self.loadOrder = np.random.choice(nBatches,
+                                          size = nBatches,
+                                          replace = False)
 
     def load(self):
         for i in self.loadOrder:
