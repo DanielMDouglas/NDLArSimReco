@@ -4,8 +4,8 @@ import torch
 import random
 # random.seed(12)
 
-from network import ConfigurableSparseNetwork
-from dataLoader import DataLoader
+from NDLArSimReco.network import ConfigurableSparseNetwork
+from NDLArSimReco.dataLoader import DataLoader
 
 import yaml
 import os
@@ -16,9 +16,11 @@ def main(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
+    print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, out_feat=5, D=3, manifest = manifest).to(device)
 
     infileList = [manifest['trainfile']]
+    print ("initializing data loader...")
     dl = DataLoader(infileList)
     
     if args.force:
@@ -35,6 +37,7 @@ def main(args):
         if os.path.exists(reportFile):
             os.remove(reportFile)
         
+    print ("training...")
     net.train(dl)
 
     checkpointFile = os.path.join(net.outDir,

@@ -8,8 +8,6 @@ from torch.profiler import profile, record_function, ProfilerActivity
 
 import numpy as np
 
-from SingleParticleDataAccess import LABELS, BATCH_SIZE, load_batch
-
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
@@ -151,7 +149,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
-        batchesPerEpoch = 400000//BATCH_SIZE
+        # batchesPerEpoch = 400000//BATCH_SIZE
        
         report = False
         prevRemainder = 0
@@ -168,7 +166,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i < self.n_epoch:
                 continue
             dataLoader.setFileLoadOrder()
-            for hits, tracks in tqdm.tqdm(dataLoader.load()):
+            for j, (hits, tracks) in tqdm.tqdm(enumerate(dataLoader.load())):
                 if j < self.n_iter:
                     continue
 

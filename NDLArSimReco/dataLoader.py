@@ -22,7 +22,7 @@ class DataLoader:
     def setFileLoadOrder(self):
         # set the order in which the files will be parsed
         # this should be redone at the beginning of every epoch
-        self.FileLoadOrder = np.random.choice(len(self.fileList),
+        self.fileLoadOrder = np.random.choice(len(self.fileList),
                                               size = len(self.fileList),
                                               replace = False)
         
@@ -53,13 +53,12 @@ class DataLoader:
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
             for evtIndex in self.sampleLoadOrder:
-                yield load_event(evtIndex)
+                yield self.load_event(evtIndex)
         
     def load_event(self, event_id):
         # load a given event from the currently loaded file
         t0 = self.t0_grp[event_id][0]
-        print("--------event_id: ", event_id)
-        print(self.run_config.keys())
+        # print("--------event_id: ", event_id)
         ti = t0 + self.run_config['time_interval'][0]/self.run_config['CLOCK_CYCLE']
         tf = t0 + self.run_config['time_interval'][1]/self.run_config['CLOCK_CYCLE']
         
