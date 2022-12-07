@@ -10,32 +10,53 @@ from LarpixParser.geom_to_dict import larpix_layout_to_dict
 from . import detector
 
 class DataLoader:
-    def __init__(self, h5File):
-        self.fileName = h5File
-        f = h5py.File(self.fileName)
-        self.packets = f['packets']
-        self.tracks = f['tracks']
-        self.assn = f['mc_packets_assn']
+    def __init__(self, infileList):
+        self.fileList = infileList
 
-        self.t0_grp = EvtParser.get_t0(self.packets)
         self.geom_dict = larpix_layout_to_dict("multi_tile_layout-3.0.40",
                                                save_dict = False)
 
         self.run_config = util.get_run_config("ndlar-module.yaml",
                                               use_builtin = True)
-    
-    def sampleLoadOrder(self):
+        
+    def setFileLoadOrder(self):
+        # set the order in which the files will be parsed
+        # this should be redone at the beginning of every epoch
+        self.FileLoadOrder = np.random.choice(len(self.fileList),
+                                              size = len(self.fileList),
+                                              replace = False)
+        
+    def loadNextFile(self, fileIndex):
+        # prime the next file.  This is done after the previous
+        # file has been fully iterated through
+        self.currentFileName = self.fileList[fileIndex]
+        f = h5py.File(self.currentFileName)
+        self.packets = f['packets']
+        self.tracks = f['tracks']
+        self.assn = f['mc_packets_assn']
+
+        self.t0_grp = EvtParser.get_t0(self.packets)
+
+        self.setSampleLoadOrder()
+        
+    def setSampleLoadOrder(self):
+        # set the order that events/images within a given file
+        # are sampled
+        # This should be redone after each file is loaded
         # self.loadOrder = np.arange(self.t0_grp.shape[0])
         nBatches = self.t0_grp.shape[0]
-        self.loadOrder = np.random.choice(nBatches,
-                                          size = nBatches,
-                                          replace = False)
+        self.sampleLoadOrder = np.random.choice(nBatches,
+                                                size = nBatches,
+                                                replace = False)
 
     def load(self):
-        for i in self.loadOrder:
-            yield load_event(i)
+        for fileIndex in self.fileLoadOrder:
+            self.loadNextFile(fileIndex)
+            for evtIndex in self.sampleLoadOrder:
+                yield load_event(evtIndex)
         
     def load_event(self, event_id):
+        # load a given event from the currently loaded file
         t0 = self.t0_grp[event_id][0]
         print("--------event_id: ", event_id)
         print(self.run_config.keys())

@@ -5,6 +5,7 @@ import random
 # random.seed(12)
 
 from network import ConfigurableSparseNetwork
+from dataLoader import DataLoader
 
 import yaml
 import os
@@ -17,6 +18,9 @@ def main(args):
 
     net = ConfigurableSparseNetwork(in_feat=1, out_feat=5, D=3, manifest = manifest).to(device)
 
+    infileList = [manifest['trainfile']]
+    dl = DataLoader(infileList)
+    
     if args.force:
         # remove previous checkpoints
         for oldCheckpoint in os.listdir(os.path.join(manifest['outdir'],
@@ -31,7 +35,7 @@ def main(args):
         if os.path.exists(reportFile):
             os.remove(reportFile)
         
-    net.train()
+    net.train(dl)
 
     checkpointFile = os.path.join(net.outDir,
                                   'checkpoint_final_{}_{}.ckpt'.format(manifest['nEpochs'], 0))

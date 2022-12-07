@@ -356,7 +356,6 @@ class EdepRatioPrimary1dPlot (ValidationPlot):
             Edep.append(totEdep)
         Edep = np.array(Edep)
         ratio = Edep/Einit
-        print(Edep)
         
         for thisPrimary in np.unique(primaryPDG):
             if not thisPrimary in self.EdepRatio:

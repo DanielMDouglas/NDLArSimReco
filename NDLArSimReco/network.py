@@ -163,14 +163,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.n_epoch = int(latestCheckpoint.split('_')[-2])
             self.n_iter = int(latestCheckpoint.split('_')[-1].split('.')[0])
             print ("resuming training at epoch {}, iteration {}".format(self.n_epoch, self.n_iter))
-    
+
         for i in tqdm.tqdm(range(nEpochs)):
             if i < self.n_epoch:
                 continue
-            for j, (hits,
-                    tracks) in tqdm.tqdm(enumerate(load_batch(self.manifest['trainfile'],
-                                                              n_iter = batchesPerEpoch)),
-                                         total = batchesPerEpoch):
+            dataLoader.setFileLoadOrder()
+            for hits, tracks in tqdm.tqdm(dataLoader.load()):
                 if j < self.n_iter:
                     continue
 
@@ -178,48 +176,48 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
                 tracksX1, tracksX2, tracksY1, tracksY2, tracksZ1, tracksZ2, tracksdE = tracks
                 
-                labels = torch.Tensor([LABELS.index(l) for l in labelsPDG]).to(device)
-                data = ME.SparseTensor(torch.FloatTensor(features).to(device),
-                                       coordinates=torch.FloatTensor(coords).to(device))
-                optimizer.zero_grad()
+                # labels = torch.Tensor([LABELS.index(l) for l in labelsPDG]).to(device)
+                # data = ME.SparseTensor(torch.FloatTensor(features).to(device),
+                #                        coordinates=torch.FloatTensor(coords).to(device))
+                # optimizer.zero_grad()
 
-                if report:
-                    with profile(activities=[ProfilerActivity.CUDA],
-                                 profile_memory = True,
-                                 record_shapes = True) as prof:
-                        with record_function("model_inference"):
-                            outputs = self(data)
+                # if report:
+                #     with profile(activities=[ProfilerActivity.CUDA],
+                #                  profile_memory = True,
+                #                  record_shapes = True) as prof:
+                #         with record_function("model_inference"):
+                #             outputs = self(data)
 
-                    print(prof.key_averages().table(sort_by="self_cuda_time_total", 
-                                                    row_limit = 10))
+                #     print(prof.key_averages().table(sort_by="self_cuda_time_total", 
+                #                                     row_limit = 10))
                     
-                else:
-                    outputs = self(data)
+                # else:
+                #     outputs = self(data)
 
-                loss = criterion(outputs.F.squeeze(), labels.long())
-                loss.backward()
-                optimizer.step()
+                # loss = criterion(outputs.F.squeeze(), labels.long())
+                # loss.backward()
+                # optimizer.step()
         
                 self.n_iter += 1
 
-                # save a checkpoint of the model every 10% of an epoch
-                remainder = (self.n_iter/batchesPerEpoch)%0.1
-                if remainder < prevRemainder:
-                    try:
-                        checkpointFile = os.path.join(self.outDir,
-                                                      'checkpoints',
-                                                      'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                        self.make_checkpoint(checkpointFile)
+                # # save a checkpoint of the model every 10% of an epoch
+                # remainder = (self.n_iter/batchesPerEpoch)%0.1
+                # if remainder < prevRemainder:
+                #     try:
+                #         checkpointFile = os.path.join(self.outDir,
+                #                                       'checkpoints',
+                #                                       'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
+                #         self.make_checkpoint(checkpointFile)
 
-                        prediction = torch.argmax(outputs.features, dim = 1)
-                        accuracy = sum(prediction == labels)/len(prediction)
+                #         prediction = torch.argmax(outputs.features, dim = 1)
+                #         accuracy = sum(prediction == labels)/len(prediction)
 
-                        self.training_report(loss, accuracy)
+                #         self.training_report(loss, accuracy)
 
-                        device.empty_cache()
-                    except AttributeError:
-                        pass
-                prevRemainder = remainder
+                #         device.empty_cache()
+                #     except AttributeError:
+                #         pass
+                # prevRemainder = remainder
             
             self.n_epoch += 1
             self.n_iter = 0
