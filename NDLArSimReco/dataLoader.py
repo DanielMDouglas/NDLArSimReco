@@ -7,6 +7,8 @@ from LarpixParser import event_parser as EvtParser
 from LarpixParser import util
 from LarpixParser.geom_to_dict import larpix_layout_to_dict
 
+from NDeventDisplay.voxelize import voxelize
+
 from . import detector
 
 class DataLoader:
@@ -31,31 +33,6 @@ class DataLoader:
                                 np.linspace(yMin, yMax, nVoxY + 1),
                                 np.linspace(zMin, zMax, nVoxZ + 1))
 
-
-    def trackVoxelizer(self, hits, tracks):
-        (track_xStart, track_xEnd,
-         track_yStart, track_yEnd,
-         track_zStart, track_zEnd,
-         track_dE) = tracks
-        xMid = 0.5*(track_xStart + track_xEnd)
-        yMid = 0.5*(track_yStart + track_yEnd)
-        zMid = 0.5*(track_zStart + track_zEnd)
-        (hitX,
-         hitY,
-         hitZ,
-         dQ) = hits
-        
-        print ('x')
-        print ("track", np.min(xMid), np.max(xMid))
-        print ("hit", np.min(hitX), np.max(hitX))
-
-        print ('y')
-        print ("track", np.min(yMid), np.max(yMid))
-        print ("hit", np.min(hitY), np.max(hitY))
-
-        print ('z')
-        print ("track", np.min(zMid), np.max(zMid))
-        print ("hit", np.min(hitZ), np.max(hitZ))
         
     def setFileLoadOrder(self):
         # set the order in which the files will be parsed
@@ -133,6 +110,6 @@ class DataLoader:
                   track_yStart, track_yEnd,
                   track_dE)
 
-        self.trackVoxelizer(hits, tracks)
+        voxTracks = voxelize(tracks)
 
-        return hits, tracks
+        return hits, voxTracks
