@@ -1,5 +1,5 @@
-trainfile: /sdf/group/neutrino/dougl215/singleParticle/batch1k/larndsim_output/edep_single_particle_larndsim_f5741683-6872-49e5-983d-c4881b6af3e7.h5
-testfile: /sdf/group/neutrino/dougl215/singleParticle/batch1k/larndsim_output/edep_single_particle_larndsim_f5966a8e-3b49-4801-b6d6-84f9b211aa69.h5
+trainfile: /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/larndsim_output/edep_single_particle_larndsim_fbee8d4c-7776-4816-91ce-fe626ec7fd3d.root
+testfile: /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/larndsim_output/edep_single_particle_larndsim_fbee8d4c-7776-4816-91ce-fe626ec7fd3d.root
 outdir: /scratch/dougl215/larndsim_mlp
 
 nEpochs: 1

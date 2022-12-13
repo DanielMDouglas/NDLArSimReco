@@ -15,9 +15,11 @@ class DataLoader:
     def __init__(self, infileList):
         self.fileList = infileList
 
+        print ("building geometry lookup...")
         self.geom_dict = larpix_layout_to_dict("multi_tile_layout-3.0.40",
                                                save_dict = False)
 
+        print ("building run configuration...")
         self.run_config = util.get_run_config("ndlar-module.yaml",
                                               use_builtin = True)
 
@@ -64,10 +66,17 @@ class DataLoader:
                                                 size = nBatches,
                                                 replace = False)
 
-    def load(self):
+    def load(self, batchSize = 10):
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
             for evtIndex in self.sampleLoadOrder:
+                # hits = []
+                # tracks = []
+                # for i in range(batchSize):
+                #     theseHits, theseTracks = self.load_event(evtIndex)
+                #     hits.append(theseHits)
+                #     tracks.append(theseTracks)
+                # yield hits, tracks
                 yield self.load_event(evtIndex)
         
     def load_event(self, event_id):
@@ -87,29 +96,25 @@ class DataLoader:
 
         track_ev_id = np.unique(EvtParser.packet_to_eventid(self.assn,
                                                             self.tracks)[pckt_mask])
-        track_mask = self.tracks['eventID'] == track_ev_id
+        if len(track_ev_id) == 1:
+            track_mask = self.tracks['eventID'] == track_ev_id
+        else:
+            print (event_id)
+            print(track_ev_id)
+            track_mask = np.logical_and(*[self.tracks['eventID'] == thisev_id
+                                          for thisev_id in track_ev_id])
         tracks_ev = self.tracks[track_mask]
-
-        track_xStart = tracks_ev['x_start']
-        track_yStart = tracks_ev['y_start']
-        track_zStart = tracks_ev['z_start']
-
-        track_xEnd = tracks_ev['x_end']
-        track_yEnd = tracks_ev['y_end']
-        track_zEnd = tracks_ev['z_end']
-
-        track_dE = tracks_ev['dE']
 
         hits = (np.array(hitZ)/10,
                 np.array(hitX)/10,
                 np.array(hitY)/10,
                 np.array(dQ))
-        
-        tracks = (track_xStart, track_xEnd,
-                  track_zStart, track_zEnd,
-                  track_yStart, track_yEnd,
-                  track_dE)
 
-        voxTracks = voxelize(tracks)
+        print (track_ev_id)
+        print (track_mask)
+        print(type(tracks_ev))
+        print(tracks_ev)
+        
+        voxTracks = voxelize(tracks_ev)
 
         return hits, voxTracks

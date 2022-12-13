@@ -165,19 +165,53 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         for i in tqdm.tqdm(range(nEpochs)):
             if i < self.n_epoch:
                 continue
+
             dataLoader.setFileLoadOrder()
             for j, (hits, tracks) in tqdm.tqdm(enumerate(dataLoader.load())):
                 if j < self.n_iter:
                     continue
 
-                hitsX, hitsY, hitsZ, hitsQ = hits
+                hitList = [hits]
+                trackList = [tracks]
 
-                tracksX1, tracksX2, tracksY1, tracksY2, tracksZ1, tracksZ2, tracksdE = tracks
+                hitCoordTensors = []
+                hitFeatureTensors = []
+                for hits in hitList:
+                    hitsX, hitsY, hitsZ, hitsQ = hits
+                    hitCoords = torch.FloatTensor([hitsX, hitsY, hitsZ]).T
+                    hitFeature = torch.FloatTensor([hitsQ]).T
+                    
+                    hitCoordTensors.append(hitCoords)
+                    hitFeatureTensors.append(hitFeature)
+
+                hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
+                                                                hitFeatureTensors)
                 
-                # labels = torch.Tensor([LABELS.index(l) for l in labelsPDG]).to(device)
-                # data = ME.SparseTensor(torch.FloatTensor(features).to(device),
-                #                        coordinates=torch.FloatTensor(coords).to(device))
-                # optimizer.zero_grad()
+                trackCoordTensors = []
+                trackFeatureTensors = []
+                for tracks in trackList:
+                    trackCoords, dE = tracks
+                    trackCoords = torch.FloatTensor(trackCoords)
+                    trackFeature = torch.FloatTensor([dE]).T
+                
+                    trackCoordTensors.append(trackCoords)
+                    trackFeatureTensors.append(trackFeature)
+
+                trackCoords, trackFeature = ME.utils.sparse_collate(trackCoordTensors, 
+                                                                    trackFeatureTensors)
+
+                print(hitCoords.shape)
+                print(hitFeature.shape)
+                print(trackCoords.shape)
+                print(trackFeature.shape)
+                # print (torch.FloatTensor(trackCoords), hitsX)
+                # print (hitCoords.shape, hitFeature.shape)
+                
+                larpix = ME.SparseTensor(features = hitFeature.to(device),
+                                         coordinates = hitCoords.to(device))
+                edep = ME.SparseTensor(features = trackFeature.to(device),
+                                       coordinates = trackCoords.to(device))
+                optimizer.zero_grad()
 
                 # if report:
                 #     with profile(activities=[ProfilerActivity.CUDA],
@@ -191,6 +225,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     
                 # else:
                 #     outputs = self(data)
+                outputs = self(data)
 
                 # loss = criterion(outputs.F.squeeze(), labels.long())
                 # loss.backward()
@@ -447,7 +482,7 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
 
                 hitsX, hitsY, hitsZ, hitsQ = hits
 
-                tracksX1, tracksX2, tracksY1, tracksY2, tracksZ1, tracksZ2, tracksdE = tracks
+                tracksX, tracksY, tracksZ, tracksdE = tracks
                 
                 labels = torch.Tensor([LABELS.index(l) for l in labelsPDG]).to(device)
                 data = ME.SparseTensor(torch.FloatTensor(features).to(device),
