@@ -70,14 +70,14 @@ class DataLoader:
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
             for evtIndex in self.sampleLoadOrder:
-                # hits = []
-                # tracks = []
-                # for i in range(batchSize):
-                #     theseHits, theseTracks = self.load_event(evtIndex)
-                #     hits.append(theseHits)
-                #     tracks.append(theseTracks)
-                # yield hits, tracks
-                yield self.load_event(evtIndex)
+                hits = []
+                tracks = []
+                for i in range(batchSize):
+                    theseHits, theseTracks = self.load_event(evtIndex)
+                    hits.append(theseHits)
+                    tracks.append(theseTracks)
+                yield hits, tracks
+                # yield self.load_event(evtIndex)
         
     def load_event(self, event_id):
         # load a given event from the currently loaded file
@@ -99,8 +99,6 @@ class DataLoader:
         if len(track_ev_id) == 1:
             track_mask = self.tracks['eventID'] == track_ev_id
         else:
-            print (event_id)
-            print(track_ev_id)
             track_mask = np.logical_and(*[self.tracks['eventID'] == thisev_id
                                           for thisev_id in track_ev_id])
         tracks_ev = self.tracks[track_mask]
@@ -110,11 +108,6 @@ class DataLoader:
                 np.array(hitY)/10,
                 np.array(dQ))
 
-        print (track_ev_id)
-        print (track_mask)
-        print(type(tracks_ev))
-        print(tracks_ev)
-        
         voxTracks = voxelize(tracks_ev)
 
         return hits, voxTracks

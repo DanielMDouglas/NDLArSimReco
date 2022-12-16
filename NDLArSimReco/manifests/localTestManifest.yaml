@@ -1,4 +1,5 @@
-trainfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_01bb6c9f-8ff4-407d-a11d-9e1bdf385c21.h5
+# trainfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_01bb6c9f-8ff4-407d-a11d-9e1bdf385c21.h5
+trainfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_f1c654d8-2fcf-4f03-9984-5f343fa7b01d.root
 testfile: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_01bb6c9f-8ff4-407d-a11d-9e1bdf385c21.h5
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
@@ -6,9 +7,26 @@ nEpochs: 1
 
 layers:
 
-- type: MLinear
-  out_feat: 256
-- type: MLinear
-  out_feat: 256
-- type: MLinear
-  out_feat: 5
+- type: MBatchNorm
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 32
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  kernel_size: 3
+  stride: 1
+  out_feat: 1

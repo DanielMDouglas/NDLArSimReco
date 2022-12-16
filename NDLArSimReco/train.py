@@ -17,9 +17,9 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, out_feat=5, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
 
-    infileList = [manifest['trainfile']]
+    infileList = [manifest['trainfile']] 
     print ("initializing data loader...")
     dl = DataLoader(infileList)
     

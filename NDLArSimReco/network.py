@@ -18,7 +18,6 @@ import tqdm
 import os
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
-
     def __init__(self, in_feat, out_feat, D, manifest):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
@@ -52,6 +51,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             elif layer['type'] == 'MReLU':
                 self.layers.append(ME.MinkowskiReLU())
             elif layer['type'] == 'MBatchNorm':
+                layer_out_feat = layer_in_feat
                 self.layers.append(ME.MinkowskiBatchNorm(layer_out_feat))
             elif layer['type'] == 'MMaxPooling':
                 self.layers.append(ME.MinkowskiMaxPooling(
@@ -145,7 +145,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        criterion = nn.CrossEntropyLoss()
+        # criterion = nn.CrossEntropyLoss()
+        # criterion = nn.MSELoss()
+        # criterion = lambda x, y: 0
+        def criterion(prediction, truth):
+            return nn.MSELoss()(torch.sum(prediction), torch.sum(truth))
+        
         optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
@@ -167,12 +172,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 continue
 
             dataLoader.setFileLoadOrder()
-            for j, (hits, tracks) in tqdm.tqdm(enumerate(dataLoader.load())):
+            for j, (hitList, trackList) in tqdm.tqdm(enumerate(dataLoader.load())):
                 if j < self.n_iter:
                     continue
-
-                hitList = [hits]
-                trackList = [tracks]
 
                 hitCoordTensors = []
                 hitFeatureTensors = []
@@ -200,12 +202,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 trackCoords, trackFeature = ME.utils.sparse_collate(trackCoordTensors, 
                                                                     trackFeatureTensors)
 
-                print(hitCoords.shape)
-                print(hitFeature.shape)
-                print(trackCoords.shape)
-                print(trackFeature.shape)
-                # print (torch.FloatTensor(trackCoords), hitsX)
-                # print (hitCoords.shape, hitFeature.shape)
                 
                 larpix = ME.SparseTensor(features = hitFeature.to(device),
                                          coordinates = hitCoords.to(device))
@@ -213,44 +209,45 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                        coordinates = trackCoords.to(device))
                 optimizer.zero_grad()
 
-                # if report:
-                #     with profile(activities=[ProfilerActivity.CUDA],
-                #                  profile_memory = True,
-                #                  record_shapes = True) as prof:
-                #         with record_function("model_inference"):
-                #             outputs = self(data)
+                if report:
+                    with profile(activities=[ProfilerActivity.CUDA],
+                                 profile_memory = True,
+                                 record_shapes = True) as prof:
+                        with record_function("model_inference"):
+                            outputs = self(data)
 
-                #     print(prof.key_averages().table(sort_by="self_cuda_time_total", 
-                #                                     row_limit = 10))
+                    print(prof.key_averages().table(sort_by="self_cuda_time_total", 
+                                                    row_limit = 10))
                     
-                # else:
-                #     outputs = self(data)
-                outputs = self(data)
+                else:
+                    prediction = self(larpix)
 
-                # loss = criterion(outputs.F.squeeze(), labels.long())
-                # loss.backward()
-                # optimizer.step()
+                print (prediction)
+
+                loss = criterion(prediction, edep)
+                loss.backward()
+                optimizer.step()
         
                 self.n_iter += 1
 
-                # # save a checkpoint of the model every 10% of an epoch
-                # remainder = (self.n_iter/batchesPerEpoch)%0.1
-                # if remainder < prevRemainder:
-                #     try:
-                #         checkpointFile = os.path.join(self.outDir,
-                #                                       'checkpoints',
-                #                                       'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                #         self.make_checkpoint(checkpointFile)
+                # save a checkpoint of the model every 10% of an epoch
+                remainder = (self.n_iter/batchesPerEpoch)%0.1
+                if remainder < prevRemainder:
+                    try:
+                        checkpointFile = os.path.join(self.outDir,
+                                                      'checkpoints',
+                                                      'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
+                        self.make_checkpoint(checkpointFile)
 
-                #         prediction = torch.argmax(outputs.features, dim = 1)
-                #         accuracy = sum(prediction == labels)/len(prediction)
+                        prediction = torch.argmax(prediction.features, dim = 1)
+                        accuracy = sum(prediction == labels)/len(prediction)
 
-                #         self.training_report(loss, accuracy)
+                        self.training_report(loss, accuracy)
 
-                #         device.empty_cache()
-                #     except AttributeError:
-                #         pass
-                # prevRemainder = remainder
+                        device.empty_cache()
+                    except AttributeError:
+                        pass
+                prevRemainder = remainder
             
             self.n_epoch += 1
             self.n_iter = 0
@@ -266,7 +263,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                       loss, 
                                                       acc))
         
-
     def evaluate(self):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
@@ -301,21 +297,21 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                              profile_memory = True,
                              record_shapes = True) as prof:
                     with record_function("model_inference"):
-                        outputs = self(data)
+                        prediction = self(data)
 
                 print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                 row_limit = 10))
 
             else:
-                outputs = self(data)
+                prediction = self(data)
 
-            loss = criterion(outputs.F.squeeze(), labels.long())
+            loss = criterion(prediction.F.squeeze(), labels.long())
             
             self.n_iter += 1
 
             lossList.append(float(loss))
         
-            prediction = torch.argmax(outputs.features, dim = 1)
+            prediction = torch.argmax(prediction.features, dim = 1)
             accuracy = sum(prediction == labels)/len(prediction)
 
             accList.append(float(accuracy))
@@ -325,8 +321,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
         return lossList, accList
 
-class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
 
+class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, out_feat, D, manifest):
         super(ExampleNetwork, self).__init__(D)
 
@@ -494,15 +490,15 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
                                  profile_memory = True,
                                  record_shapes = True) as prof:
                         with record_function("model_inference"):
-                            outputs = self(data)
+                            prediction = self(data)
 
                     print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                     row_limit = 10))
                     
                 else:
-                    outputs = self(data)
+                    prediction = self(data)
 
-                loss = criterion(outputs.F.squeeze(), labels.long())
+                loss = criterion(prediction.F.squeeze(), labels.long())
                 loss.backward()
                 optimizer.step()
         
@@ -517,7 +513,7 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
                                                       'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
                         self.make_checkpoint(checkpointFile)
 
-                        prediction = torch.argmax(outputs.features, dim = 1)
+                        prediction = torch.argmax(prediction.features, dim = 1)
                         accuracy = sum(prediction == labels)/len(prediction)
 
                         self.training_report(loss, accuracy)
@@ -540,7 +536,6 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
                                                       self.n_iter, 
                                                       loss, 
                                                       acc))
-        
 
     def evaluate(self):
         """
@@ -576,21 +571,21 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
                              profile_memory = True,
                              record_shapes = True) as prof:
                     with record_function("model_inference"):
-                        outputs = self(data)
+                        prediction = self(data)
 
                 print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                 row_limit = 10))
 
             else:
-                outputs = self(data)
+                prediction = self(data)
 
-            loss = criterion(outputs.F.squeeze(), labels.long())
+            loss = criterion(prediction.F.squeeze(), labels.long())
             
             self.n_iter += 1
 
             lossList.append(float(loss))
         
-            prediction = torch.argmax(outputs.features, dim = 1)
+            prediction = torch.argmax(prediction.features, dim = 1)
             accuracy = sum(prediction == labels)/len(prediction)
 
             accList.append(float(accuracy))
