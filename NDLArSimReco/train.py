@@ -19,7 +19,7 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
 
-    infileList = [manifest['trainfile']] 
+    infileList = manifest['trainfileList'] 
     print ("initializing data loader...")
     dl = DataLoader(infileList)
     
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--manifest', type = str,
-                        default = "/home/dan/studies/NDLArForwardME/testManifest.yaml",
+                        default = "/home/dan/studies/NDLArSimReco/NDLArSimReco/manifests/localTestManifest.yaml",
                         help = "network manifest yaml file")
     parser.add_argument('-f', '--force',
                         action = 'store_true',

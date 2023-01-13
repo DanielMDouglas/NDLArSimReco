@@ -12,7 +12,7 @@ from NDeventDisplay.voxelize import voxelize
 from . import detector
 
 class DataLoader:
-    def __init__(self, infileList):
+    def __init__(self, infileList, batchSize = 10):
         self.fileList = infileList
 
         print ("building geometry lookup...")
@@ -23,9 +23,11 @@ class DataLoader:
         self.run_config = util.get_run_config("ndlar-module.yaml",
                                               use_builtin = True)
 
-        xMin, xMax, xWidth = 425.0, 905.0, 0.38
-        yMin, yMax, yWidth = -290.0, 390.0, 0.38
-        zMin, zMax, zWidth = -210.0, 70.0, 0.38
+        self.pixelPitch = 0.38
+        
+        xMin, xMax, xWidth = 425.0, 905.0, self.pixelPitch
+        yMin, yMax, yWidth = -290.0, 390.0, self.pixelPitch
+        zMin, zMax, zWidth = -210.0, 70.0, self.pixelPitch
 
         nVoxX = int((xMax - xMin)/xWidth)
         nVoxY = int((yMax - yMin)/yWidth)
@@ -35,6 +37,17 @@ class DataLoader:
                                 np.linspace(yMin, yMax, nVoxY + 1),
                                 np.linspace(zMin, zMax, nVoxZ + 1))
 
+        self.batchSize = batchSize
+
+        nImages = 0
+        for fileName in self.fileList:
+            f = h5py.File(fileName)
+            packets = f['packets']
+            t0_grp = EvtParser.get_t0(packets)
+
+            nImages += len(np.unique(t0_grp))
+
+        self.batchesPerEpoch = int(nImages/batchSize)
         
     def setFileLoadOrder(self):
         # set the order in which the files will be parsed
@@ -50,6 +63,7 @@ class DataLoader:
         f = h5py.File(self.currentFileName)
         self.packets = f['packets']
         self.tracks = f['tracks']
+        self.voxels = f['track_voxels']
         self.assn = f['mc_packets_assn']
 
         self.t0_grp = EvtParser.get_t0(self.packets)
@@ -66,19 +80,26 @@ class DataLoader:
                                                 size = nBatches,
                                                 replace = False)
 
-    def load(self, batchSize = 10):
+    def load(self):
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
+            hits = []
+            tracks = []
             for evtIndex in self.sampleLoadOrder:
-                hits = []
-                tracks = []
-                for i in range(batchSize):
+                if not len(hits) == self.batchSize:
                     theseHits, theseTracks = self.load_event(evtIndex)
-                    hits.append(theseHits)
-                    tracks.append(theseTracks)
-                yield hits, tracks
-                # yield self.load_event(evtIndex)
-        
+                    if theseHits[0].shape[0] == 0 or theseTracks[0].shape[0] == 0:
+                        print ("bum sample!")
+                        continue
+                    else:
+                        print ("got a sample")
+                        hits.append(theseHits)
+                        tracks.append(theseTracks)
+                else:
+                    yield hits, tracks
+                    hits = []
+                    tracks = []
+            
     def load_event(self, event_id):
         # load a given event from the currently loaded file
         t0 = self.t0_grp[event_id][0]
@@ -94,20 +115,25 @@ class DataLoader:
                                                            self.geom_dict,
                                                            self.run_config)
 
-        track_ev_id = np.unique(EvtParser.packet_to_eventid(self.assn,
-                                                            self.tracks)[pckt_mask])
-        if len(track_ev_id) == 1:
-            track_mask = self.tracks['eventID'] == track_ev_id
+        vox_ev_id = np.unique(EvtParser.packet_to_eventid(self.assn,
+                                                          self.tracks)[pckt_mask])
+        if len(vox_ev_id) == 1:
+            vox_mask = self.voxels['eventID'] == vox_ev_id
         else:
-            track_mask = np.logical_and(*[self.tracks['eventID'] == thisev_id
-                                          for thisev_id in track_ev_id])
-        tracks_ev = self.tracks[track_mask]
+            vox_mask = np.logical_and(*[self.voxels['eventID'] == thisev_id
+                                          for thisev_id in vox_ev_id])
+        vox_ev = self.voxels[vox_mask]
 
-        hits = (np.array(hitZ)/10,
-                np.array(hitX)/10,
-                np.array(hitY)/10,
+        # HACK - force coordinate spacing to be ~1 by dividing by pixel pitch
+        # figure out how to properly map pixels to integer coordinates
+        hits = (np.array(hitZ)/10/self.pixelPitch,
+                np.array(hitX)/10/self.pixelPitch,
+                np.array(hitY)/10/self.pixelPitch,
                 np.array(dQ))
 
-        voxTracks = voxelize(tracks_ev)
-
-        return hits, voxTracks
+        voxels = (vox_ev['xBin']/self.pixelPitch,
+                  vox_ev['yBin']/self.pixelPitch,
+                  vox_ev['zBin']/self.pixelPitch,
+                  vox_ev['dE'])
+        
+        return hits, voxels

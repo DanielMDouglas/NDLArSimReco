@@ -149,7 +149,60 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # criterion = nn.MSELoss()
         # criterion = lambda x, y: 0
         def criterion(prediction, truth):
-            return nn.MSELoss()(torch.sum(prediction), torch.sum(truth))
+            # print ("prediction", np.sum(prediction.coordinates[:,1:]))
+
+            # smear prediction with gaussian to do a likelihood style
+            jointLikelihood = 1
+            for batchNo in np.unique(prediction.coordinates[:,0]):
+                batchPredCoords = prediction.coordinates[prediction.coordinates[:,0] == batchNo][:,1:]
+                batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:]
+
+                batchPredFeats = prediction.features[prediction.coordinates[:,0] == batchNo]
+                batchTrueFeats = truth.features[truth.coordinates[:,0] == batchNo]
+
+                # smearR = 10
+                # def smearedTruth(position):
+                #     indivVals = [torch.exp(torch.norm(positionTrue - position)*torch.pow(smearR,-2))
+                #                  for positionTrue in batchTrueCoords]
+                #     return 
+
+                # jointLikelihood *= predictionValue*smearedTruth(predictionPosition))
+
+            # return -torch.log(jointLikelihood)
+            print (prediction.features)
+            return torch.sum(prediction.features)
+            # predCenters = []
+            # trueCenters = []
+            # for batchNo in np.unique(prediction.coordinates[:,0]):
+            #     batchPredCoords = prediction.coordinates[prediction.coordinates[:,0] == batchNo][:,1:]
+            #     batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:]
+
+            #     batchPredFeats = prediction.features[prediction.coordinates[:,0] == batchNo]
+            #     batchTrueFeats = truth.features[truth.coordinates[:,0] == batchNo]
+
+            #     print (batchPredCoords.shape,
+            #            batchPredFeats.shape,
+            #            batchTrueCoords.shape,
+            #            batchTrueFeats.shape)
+
+            #     # # print( torch.mul(batchPredCoords, batchPredFeats) )
+            #     print (torch.sum(batchPredCoords, 0))
+            #     print (torch.sum(batchTrueCoords, 0))
+                
+            #     predImageCenter = torch.sum(torch.mul(batchPredCoords, batchPredFeats), 0)\
+            #         /torch.sum(batchPredFeats, 0)
+            #     trueImageCenter = torch.sum(torch.mul(batchTrueCoords, batchTrueFeats), 0)\
+            #         /torch.sum(batchTrueFeats, 0)
+
+            #     print (predImageCenter)
+            #     print (trueImageCenter)
+                
+            #     predCenters.append(predImageCenter)
+            #     trueCenters.append(trueImageCenter)
+
+            # predCenters = torch.stack(predCenters)
+            # trueCenters = torch.stack(trueCenters)
+            # return nn.MSELoss()(predCenters, trueCenters)
         
         optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
 
@@ -172,7 +225,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 continue
 
             dataLoader.setFileLoadOrder()
-            for j, (hitList, trackList) in tqdm.tqdm(enumerate(dataLoader.load())):
+            for j, (hitList, trackList) in tqdm.tqdm(enumerate(dataLoader.load()),
+                                                     total = dataLoader.batchesPerEpoch):
                 if j < self.n_iter:
                     continue
 
@@ -187,20 +241,22 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     hitFeatureTensors.append(hitFeature)
 
                 hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
-                                                                hitFeatureTensors)
+                                                                hitFeatureTensors,
+                                                                dtype = torch.int32)
                 
                 trackCoordTensors = []
                 trackFeatureTensors = []
                 for tracks in trackList:
-                    trackCoords, dE = tracks
-                    trackCoords = torch.FloatTensor(trackCoords)
+                    trackX, trackZ, trackY, dE = tracks
+                    trackCoords = torch.FloatTensor([trackX, trackY, trackZ]).T
                     trackFeature = torch.FloatTensor([dE]).T
                 
                     trackCoordTensors.append(trackCoords)
                     trackFeatureTensors.append(trackFeature)
 
                 trackCoords, trackFeature = ME.utils.sparse_collate(trackCoordTensors, 
-                                                                    trackFeatureTensors)
+                                                                    trackFeatureTensors,
+                                                                    dtype = torch.int32)
 
                 
                 larpix = ME.SparseTensor(features = hitFeature.to(device),
@@ -222,16 +278,15 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 else:
                     prediction = self(larpix)
 
-                print (prediction)
-
                 loss = criterion(prediction, edep)
+                print ("loss", loss)
                 loss.backward()
                 optimizer.step()
         
                 self.n_iter += 1
 
                 # save a checkpoint of the model every 10% of an epoch
-                remainder = (self.n_iter/batchesPerEpoch)%0.1
+                remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
                 if remainder < prevRemainder:
                     try:
                         checkpointFile = os.path.join(self.outDir,
@@ -240,9 +295,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         self.make_checkpoint(checkpointFile)
 
                         prediction = torch.argmax(prediction.features, dim = 1)
-                        accuracy = sum(prediction == labels)/len(prediction)
-
-                        self.training_report(loss, accuracy)
+                        
+                        # self.training_report(loss, accuracy)
 
                         device.empty_cache()
                     except AttributeError:
