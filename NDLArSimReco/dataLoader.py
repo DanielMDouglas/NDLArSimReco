@@ -89,10 +89,8 @@ class DataLoader:
                 if not len(hits) == self.batchSize:
                     theseHits, theseTracks = self.load_event(evtIndex)
                     if theseHits[0].shape[0] == 0 or theseTracks[0].shape[0] == 0:
-                        print ("bum sample!")
                         continue
                     else:
-                        print ("got a sample")
                         hits.append(theseHits)
                         tracks.append(theseTracks)
                 else:

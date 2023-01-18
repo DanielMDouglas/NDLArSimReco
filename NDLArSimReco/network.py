@@ -153,24 +153,30 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
             # smear prediction with gaussian to do a likelihood style
             jointLikelihood = 1
-            for batchNo in np.unique(prediction.coordinates[:,0]):
+            for batchNo in torch.unique(prediction.coordinates[:,0]):
                 batchPredCoords = prediction.coordinates[prediction.coordinates[:,0] == batchNo][:,1:]
                 batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:]
 
                 batchPredFeats = prediction.features[prediction.coordinates[:,0] == batchNo]
                 batchTrueFeats = truth.features[truth.coordinates[:,0] == batchNo]
 
-                # smearR = 10
+                smearR = 10
                 # def smearedTruth(position):
                 #     indivVals = [torch.exp(torch.norm(positionTrue - position)*torch.pow(smearR,-2))
                 #                  for positionTrue in batchTrueCoords]
                 #     return 
-
+                # 
                 # jointLikelihood *= predictionValue*smearedTruth(predictionPosition))
+                for trueCoord in batchTrueCoords:
+                    # print ("trueCoord", trueCoord)
+
+                    for predCoord in batchPredCoords:
+                        # print ("predCoord", predCoord)
 
             # return -torch.log(jointLikelihood)
-            print (prediction.features)
-            return torch.sum(prediction.features)
+            # print (prediction.features)
+            # return torch.sum(prediction.features)
+            return nn.MSELoss()(prediction, truth)
             # predCenters = []
             # trueCenters = []
             # for batchNo in np.unique(prediction.coordinates[:,0]):
