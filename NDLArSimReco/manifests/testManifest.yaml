@@ -1,33 +1,24 @@
-trainfileList: 
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/edep_single_particle_larndsim_6f40f04a-933b-4492-b23c-c40a7b92c673.h5
+trainfilePath: 
+  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/
 testfileList: 
   - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/edep_edep_single_particle_larndsim_6f40f04a-933b-4492-b23c-c40a7b92c673.h5
-outdir: /scratch/dougl215/larndsim_mlp
+outdir: /scratch/dougl215/larndsim_mlp_train2
 
-nEpochs: 1
+nEpochs: 10
 
 layers:
 
-- type: MBatchNorm
 - type: MConvolution
   kernel_size: 3
   stride: 1
-  out_feat: 32
-- type: MBatchNorm
+  out_feat: 128
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
   stride: 1
-  out_feat: 32
-- type: MBatchNorm
+  out_feat: 128
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
   stride: 1
-  out_feat: 32
-- type: MBatchNorm
-- type: MReLU
-- type: MConvolution
-  kernel_size: 3
-  stride: 1
-  out_feat: 1
+  out_feat: 2

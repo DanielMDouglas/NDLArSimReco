@@ -19,9 +19,17 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
 
-    infileList = manifest['trainfileList'] 
+    infilePath = manifest['trainfilePath'] 
+    if os.path.isdir(infilePath[0]):
+        infileList = [os.path.join(infilePath[0], thisFile) 
+                      for thisFile in os.listdir(infilePath[0])]
+        print ("loading files from list", infileList)
+    else:
+        infileList = infilePath
+        print ("loading files from list", infileList)
     print ("initializing data loader...")
     dl = DataLoader(infileList)
+    
     
     if args.force:
         # remove previous checkpoints

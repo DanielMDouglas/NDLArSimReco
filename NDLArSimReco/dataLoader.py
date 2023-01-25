@@ -118,8 +118,12 @@ class DataLoader:
         if len(vox_ev_id) == 1:
             vox_mask = self.voxels['eventID'] == vox_ev_id
         else:
-            vox_mask = np.logical_and(*[self.voxels['eventID'] == thisev_id
-                                          for thisev_id in vox_ev_id])
+            try:
+                vox_mask = np.logical_and(*[self.voxels['eventID'] == thisev_id
+                                            for thisev_id in vox_ev_id])
+            except ValueError:
+                print ([self.voxels['eventID'] == thisev_id
+                        for thisev_id in vox_ev_id])
         vox_ev = self.voxels[vox_mask]
 
         # HACK - force coordinate spacing to be ~1 by dividing by pixel pitch

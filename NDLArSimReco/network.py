@@ -17,6 +17,8 @@ import tqdm
 
 import os
 
+import ot
+
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, out_feat, D, manifest):
         super(ConfigurableSparseNetwork, self).__init__(D)
@@ -148,35 +150,123 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # criterion = nn.CrossEntropyLoss()
         # criterion = nn.MSELoss()
         # criterion = lambda x, y: 0
-        def criterion(prediction, truth):
+        def criterion(output, truth):
             # print ("prediction", np.sum(prediction.coordinates[:,1:]))
 
             # smear prediction with gaussian to do a likelihood style
-            jointLikelihood = 1
-            for batchNo in torch.unique(prediction.coordinates[:,0]):
-                batchPredCoords = prediction.coordinates[prediction.coordinates[:,0] == batchNo][:,1:]
-                batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:]
+            gaussWidth = 10
+            jointLogLikelihood = 0
+            totalEMD = 0
+            totalEtrue = []
+            totalEpred = []
+            for batchNo in torch.unique(output.coordinates[:,0]):
+                batchPredCoords = output.coordinates[output.coordinates[:,0] == batchNo][:,1:].float()
+                batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:].float()
 
-                batchPredFeats = prediction.features[prediction.coordinates[:,0] == batchNo]
-                batchTrueFeats = truth.features[truth.coordinates[:,0] == batchNo]
+                nTrue = batchTrueCoords.shape[0]
+                nPred = batchPredCoords.shape[0]
 
-                smearR = 10
+                batchPredE = output.features[output.coordinates[:,0] == batchNo][:,0]
+                batchPredProb = output.features[output.coordinates[:,0] == batchNo][:,1]
+                # batchPredX = output.features[output.coordinates[:,0] == batchNo][:,1]
+                # batchPredY = output.features[output.coordinates[:,0] == batchNo][:,2]
+                # batchPredZ = output.features[output.coordinates[:,0] == batchNo][:,3]
+                batchTrueE = truth.features[truth.coordinates[:,0] == batchNo]
+
+                # print ("batch truth coords shape", batchTrueCoords.shape) 
+                # print ("batch pred coords shape", batchPredCoords.shape) 
+ 
+                # mags = torch.prod(torch.stack((batchPredE.repeat(nTrue),
+                #                                torch.repeat_interleave(batchTrueE.flatten(), nPred, 0))),
+                #                   0)
+                
+                normedBatchPredE = torch.abs(batchPredE/torch.sum(batchPredE))
+                normedBatchTrueE = batchTrueE/torch.sum(batchTrueE)
+
+                mags = torch.prod(torch.stack((normedBatchPredE.repeat((nTrue, 1)),
+                                               torch.swapaxes(normedBatchTrueE.flatten().repeat((nPred, 1)), 0, 1))),
+                                  0)
+                distances = torch.linalg.norm(torch.sub(batchPredCoords.repeat((nTrue, 1, 1)),
+                                                        torch.swapaxes(batchTrueCoords.repeat((nPred, 1, 1)), 0, 1)),
+                                              dim = 2)
+                # print ("nTrue", nTrue)
+                # print ("nPred", nPred)
+                # print ("distances", distances.shape)
+                # print ("mags", mags.shape)
+                probs = torch.sum(mags*torch.exp(-torch.pow(distances/(2*gaussWidth), 2)), 0)/(gaussWidth*np.sqrt(2))
+                # print ("probs", probs)
+                jointLogLikelihood += torch.sum(torch.log(probs))/nPred
+                # print ("thisjLL", jointLogLikelihood)
+                
+                # batchPredCoords = torch.stack([batchPredX,
+                #                                batchPredY,
+                #                                batchPredZ]).T
+                # print ("batch pred coords (linear) shape", batchPredCoords.shape) 
+
+                # print ("batch truth shape", batchTrueE.shape) 
+                # print ("batch pred shape", batchPredE.shape) 
+
+                # print ( "batch true total E", torch.sum(batchTrueE))
+                # print ( "batch pred total E", torch.sum(batchPredE))
+                # print (batchPredCoords, batchTrueCoords)
+
+                # batchTotalPredE = torch.sum(batchPredE)
+                # batchTotalTrueE = torch.sum(batchTrueE)
+
+
+                # normedPred = (batchPredE/batchTotalPredE).flatten()
+                # normedTrue = (batchTrueE/batchTotalTrueE).flatten()
+
+                # normedPred /= torch.sum(normedPred)
+                # normedTrue /= torch.sum(normedTrue)
+
+                # print("normed predE", torch.sum(normedPred))
+                # print("normed trueE", torch.sum(normedTrue))
+                
+                # M = ot.dist(batchPredCoords.float(), batchTrueCoords.float())
+                # G = ot.emd(normedPred, normedTrue, M)
+                # # G = ot.emd(torch.tensor([]), torch.tensor([]), M)
+                # EMD = torch.sum(G*M)
+                # print ("distance matrix", M)
+                # print ("optimal transport", G)
+                # print ("EMD", torch.sum(G*M))
+
+                # # batchPredProb = 0.5*(1 + torch.tanh(batchPredProb))
+
+                # totalEpred.append(batchTotalPredE)
+                # totalEtrue.append(batchTotalTrueE)
+
+                # totalEMD += EMD
+
+            # print ( "true total E", torch.sum(truth.features))
+            # print ( "pred total E", torch.sum(output.features[:,0]))
+            # return nn.MSELoss()(torch.tensor(totalEpred), torch.tensor(totalEtrue))
+            # totalEnergyLoss = nn.MSELoss()(torch.sum(truth.features), torch.sum(output.features[:,0]))
+
+            nLogL = -jointLogLikelihood
+
+            return nLogL
+            # return totalEnergyLoss
+
+                # smearR = 10
                 # def smearedTruth(position):
                 #     indivVals = [torch.exp(torch.norm(positionTrue - position)*torch.pow(smearR,-2))
                 #                  for positionTrue in batchTrueCoords]
                 #     return 
                 # 
                 # jointLikelihood *= predictionValue*smearedTruth(predictionPosition))
-                for trueCoord in batchTrueCoords:
-                    # print ("trueCoord", trueCoord)
+                # for trueCoord in batchTrueCoords:
+                #     # print ("trueCoord", trueCoord)
 
-                    for predCoord in batchPredCoords:
-                        # print ("predCoord", predCoord)
+                #     for predCoord in batchPredCoords:
+                #         # print ("predCoord", predCoord)
+                #         print ("gauss", torch.exp(
 
-            # return -torch.log(jointLikelihood)
-            # print (prediction.features)
-            # return torch.sum(prediction.features)
-            return nn.MSELoss()(prediction, truth)
+                # return -torch.log(jointLikelihood)
+                # print (prediction.features)
+                # return torch.sum(prediction.features)
+                
+                # return nn.MSELoss()(prediction, truth)
             # predCenters = []
             # trueCenters = []
             # for batchNo in np.unique(prediction.coordinates[:,0]):
@@ -210,7 +300,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             # trueCenters = torch.stack(trueCenters)
             # return nn.MSELoss()(predCenters, trueCenters)
         
-        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
+        optimizer = optim.SGD(self.parameters(), lr=1.e-10, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
         # batchesPerEpoch = 400000//BATCH_SIZE
@@ -276,15 +366,15 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                  profile_memory = True,
                                  record_shapes = True) as prof:
                         with record_function("model_inference"):
-                            outputs = self(data)
+                            output = self(larpix)
 
                     print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                     row_limit = 10))
                     
                 else:
-                    prediction = self(larpix)
-
-                loss = criterion(prediction, edep)
+                    output = self(larpix)
+                    
+                loss = criterion(output, edep)
                 print ("loss", loss)
                 loss.backward()
                 optimizer.step()
@@ -300,7 +390,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                       'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
                         self.make_checkpoint(checkpointFile)
 
-                        prediction = torch.argmax(prediction.features, dim = 1)
+                        # prediction = torch.argmax(prediction.features, dim = 1)
                         
                         # self.training_report(loss, accuracy)
 

@@ -9,24 +9,20 @@ nEpochs: 1
 
 layers:
 
-- type: MBatchNorm
 - type: MConvolution
   kernel_size: 3
   stride: 1
   out_feat: 32
-- type: MBatchNorm
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
   stride: 1
   out_feat: 32
-- type: MBatchNorm
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
   stride: 1
   out_feat: 32
-- type: MBatchNorm
 - type: MReLU
 - type: MConvolution
   kernel_size: 3

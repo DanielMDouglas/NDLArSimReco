@@ -12,6 +12,7 @@ reqs = ["numpy",
         'NDeventDisplay @ git+https://github.com/DanielMDouglas/NDeventDisplay',
         "torch",
         "MinkowskiEngine",
+        "POT",
         ]
 
 setuptools.setup(
