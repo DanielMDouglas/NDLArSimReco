@@ -1,6 +1,6 @@
-trainfileList:
+trainfilePath:
   - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda.h5
-testfileList:
+testfilePath:
   - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda.h5
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
@@ -12,17 +12,12 @@ layers:
 - type: MConvolution
   kernel_size: 3
   stride: 1
-  out_feat: 32
+  out_feat: 128
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
   stride: 1
-  out_feat: 32
-- type: MReLU
-- type: MConvolution
-  kernel_size: 3
-  stride: 1
-  out_feat: 32
+  out_feat: 128
 - type: MReLU
 - type: MConvolution
   kernel_size: 3
