@@ -88,7 +88,9 @@ class DataLoader:
             for evtIndex in self.sampleLoadOrder:
                 if not len(hits) == self.batchSize:
                     theseHits, theseTracks = self.load_event(evtIndex)
-                    if theseHits[0].shape[0] == 0 or theseTracks[0].shape[0] == 0:
+                    if len(theseHits) == 0:
+                        continue
+                    elif theseHits[0].shape[0] == 0 or theseTracks[0].shape[0] == 0:
                         continue
                     else:
                         hits.append(theseHits)
@@ -122,8 +124,11 @@ class DataLoader:
                 vox_mask = np.logical_and(*[self.voxels['eventID'] == thisev_id
                                             for thisev_id in vox_ev_id])
             except ValueError:
+                print ("empty event founr at EVID", event_id)
                 print ([self.voxels['eventID'] == thisev_id
                         for thisev_id in vox_ev_id])
+                return np.array([]), np.array([])
+
         vox_ev = self.voxels[vox_mask]
 
         # HACK - force coordinate spacing to be ~1 by dividing by pixel pitch
