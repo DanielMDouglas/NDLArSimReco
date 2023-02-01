@@ -9,16 +9,16 @@ nEpochs: 10
 layers:
 
 - type: MConvolution
-  kernel_size: 3
+  kernel_size: 7
   stride: 1
   out_feat: 128
 - type: MReLU
 - type: MConvolution
-  kernel_size: 3
+  kernel_size: 7
   stride: 1
   out_feat: 128
 - type: MReLU
 - type: MConvolution
-  kernel_size: 3
+  kernel_size: 7
   stride: 1
   out_feat: 1

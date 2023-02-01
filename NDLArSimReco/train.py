@@ -19,6 +19,12 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
 
+    if args.checkpoint:
+        try:
+            net.load_checkpoint(args.checkpoint)
+        except IOError:
+            print ("could not load from checkpoint!")
+    
     infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
@@ -66,6 +72,12 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose',
                         action = 'store_true',
                         help = "print extra debug messages")
+    parser.add_argument('-c', '--checkpoint', type = str,
+                        default = None,
+                        help = "checkpoint file to start from")
+    parser.add_argument('-b', '--batchSize', type = int,
+                        default = 10,
+                        help = "batch size (number of SP images per batch)")
     
     
     args = parser.parse_args()

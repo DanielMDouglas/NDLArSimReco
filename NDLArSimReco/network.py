@@ -150,7 +150,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        optimizer = optim.SGD(self.parameters(), lr=1.e-3, momentum = 0.9)
+        optimizer = optim.SGD(self.parameters(), lr=1.e-2, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
        
@@ -417,7 +417,8 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
+        # optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
+        optimizer = optim.SGD(self.parameters(), lr=0.001)
 
         nEpochs = int(self.manifest['nEpochs'])
         batchesPerEpoch = 400000//BATCH_SIZE

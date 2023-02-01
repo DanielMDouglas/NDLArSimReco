@@ -173,6 +173,7 @@ def main(args):
             # with open("unionDomainLog", 'a') as logFile:
             logFile.write('{} \t {} \n'.format(i, loss.item()))
 
+    net.make_checkpoint('single_track.ckpt')
     plot_edep(prediction, 'prediction')
     plot_edep(edep, 'truth')
     plot_edep(larpix, 'larpix')
@@ -192,8 +193,8 @@ if __name__ == '__main__':
                         default = "/home/dan/studies/NDLArSimReco/NDLArSimReco/manifests/localTestManifest.yaml",
                         help = "network manifest yaml file")
     parser.add_argument('-c', '--checkpoint', type = str,
-                        default = "./checkpoint_1_540.ckpt",
-                        help = "network manifest yaml file")
+                        default = None,
+                        help = "checkpoint file to start from")
     
     
     args = parser.parse_args()
