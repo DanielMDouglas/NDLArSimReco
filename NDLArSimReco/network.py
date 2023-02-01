@@ -6,7 +6,8 @@ import torch.nn as nn
 import torch.optim as optim
 
 from torch.profiler import profile, record_function, ProfilerActivity
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -94,7 +95,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def load_checkpoint(self, filename):
         print ("loading checkpoint ", filename)
         with open(filename, 'rb') as f:
-            checkpoint = torch.load(f)
+            checkpoint = torch.load(f,
+                                    map_location = device)
             print (checkpoint.keys())
             self.load_state_dict(checkpoint['model'], strict=False)
 
@@ -148,8 +150,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
         optimizer = optim.SGD(self.parameters(), lr=1.e-3, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
@@ -238,8 +238,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
         """
-
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         evalBatches = 50
         # evalBatches = 10
@@ -362,7 +360,6 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
 
     def load_checkpoint(self, filename):
         print ("loading checkpoint ", filename)
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         with open(filename, 'rb') as f:
             checkpoint = torch.load(f,
                                     map_location = torch.device(device))
@@ -419,8 +416,6 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(self.parameters(), lr=0.001, momentum = 0.9)
 
@@ -514,8 +509,6 @@ class ConfigurableDenseNetwork(ME.MinkowskiNetwork):
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
         """
-
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         evalBatches = 50
         # evalBatches = 10

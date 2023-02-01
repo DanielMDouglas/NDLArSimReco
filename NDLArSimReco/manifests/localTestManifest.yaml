@@ -5,7 +5,7 @@ testfilePath:
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
-nEpochs: 1
+nEpochs: 10
 
 layers:
 

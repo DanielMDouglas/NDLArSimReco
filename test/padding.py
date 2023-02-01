@@ -31,6 +31,22 @@ def plot_edep(tensor, label = None):
 
     plt.colorbar(scatter)
 
+def plot_edep_multi(tensorList, labelList, colors):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection = '3d')
+
+    for i, (thisTensor, thisLabel, thisColor) in enumerate(zip(tensorList, labelList, colors)):
+        scatter = ax.scatter(*thisTensor.coordinates.T[1:,:],
+                             label = thisLabel,
+                             zorder = 4 - i,
+                             alpha = 0.2,
+                             color = thisColor,
+                             )
+    ax.legend(frameon = False)
+    ax.set_xlabel(r'x [mm]')
+    ax.set_ylabel(r'y [mm]')
+    ax.set_zlabel(r'z [mm]')
+
 def criterionOld(output, truth):
     lossDomain = output.coordinates.float()
     truthFeat = truth.features_at_coordinates(lossDomain)
@@ -152,12 +168,18 @@ def main(args):
         loss = criterion(prediction, edep)
         loss.backward()
         optimizer.step()
-        print (i, loss)
+        print (i, loss.item())
+        with open("trainLog", 'a') as logFile:
+            # with open("unionDomainLog", 'a') as logFile:
+            logFile.write('{} \t {} \n'.format(i, loss.item()))
 
     plot_edep(prediction, 'prediction')
     plot_edep(edep, 'truth')
     plot_edep(larpix, 'larpix')
     plot_edep(prediction - edep, 'diff')
+    plot_edep_multi([larpix, edep],
+                    ['larnd-sim', 'edep-sim'],
+                    ['black', 'red'])
     
     plt.show()
 
