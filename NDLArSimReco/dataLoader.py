@@ -1,3 +1,9 @@
+import MinkowskiEngine as ME
+ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
+
+import torch
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 import h5py
 
 import numpy as np
@@ -96,7 +102,7 @@ class DataLoader:
                         hits.append(theseHits)
                         tracks.append(theseTracks)
                 else:
-                    yield hits, tracks
+                    yield array_to_sparseTensor(hits, tracks)
                     hits = []
                     tracks = []
             
@@ -144,3 +150,61 @@ class DataLoader:
                   vox_ev['dE'])
         
         return hits, voxels
+
+def array_to_sparseTensor(hitList, trackList):
+    ME.clear_global_coordinate_manager()
+
+    hitCoordTensors = []
+    hitFeatureTensors = []
+    
+    trackCoordTensors = []
+    trackFeatureTensors = []
+
+    emptyTrackFeatureTensors = []
+    
+    for hits, tracks in zip(hitList, trackList):
+        
+        trackX, trackZ, trackY, dE = tracks
+        trackCoords = torch.FloatTensor([trackX, trackY, trackZ]).T
+        trackFeature = torch.FloatTensor([dE]).T
+
+        trackdEthreshold = 0.25
+        thresholdMask = (trackFeature > trackdEthreshold).flatten()
+
+        trackCoords = trackCoords[thresholdMask]
+        trackFeature = trackFeature[thresholdMask]
+                
+        trackCoordTensors.append(trackCoords)
+        trackFeatureTensors.append(trackFeature)
+
+        emptyTrackFeatureTensors.append(torch.zeros_like(trackFeature))
+        
+        hitsX, hitsY, hitsZ, hitsQ = hits
+        hitCoords = torch.FloatTensor([hitsX, hitsY, hitsZ]).T
+        hitFeature = torch.FloatTensor([hitsQ]).T
+            
+        hitCoordTensors.append(hitCoords)
+        hitFeatureTensors.append(hitFeature)
+            
+    hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
+                                                    hitFeatureTensors,
+                                                    dtype = torch.int32)
+                
+    trackCoords, trackFeature = ME.utils.sparse_collate(trackCoordTensors, 
+                                                        trackFeatureTensors,
+                                                        dtype = torch.int32)
+    
+    emptyTrackCoords, emptyTrackFeature = ME.utils.sparse_collate(trackCoordTensors, 
+                                                                  emptyTrackFeatureTensors,
+                                                                  dtype = torch.int32)
+                
+    larpix = ME.SparseTensor(features = hitFeature.to(device),
+                             coordinates = hitCoords.to(device))
+    edep = ME.SparseTensor(features = trackFeature.to(device),
+                           coordinates = trackCoords.to(device))
+    edepEmpty = ME.SparseTensor(features = emptyTrackFeature.to(device),
+                                coordinates = emptyTrackCoords.to(device))
+
+    larpix = larpix + edepEmpty
+    
+    return larpix, edep

@@ -20,6 +20,8 @@ import os
 
 import ot
 
+from .loss import *
+
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, out_feat, D, manifest):
         super(ConfigurableSparseNetwork, self).__init__(D)
@@ -147,77 +149,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        # criterion = nn.CrossEntropyLoss()
-        # criterion = nn.MSELoss()
-        # criterion = lambda x, y: 0
-
-        # def normalP(z, s):
-        #     return torch.exp(-torch.pow(z/s, 2)/2.)/(s*np.sqrt(2*torch.pi))
-
-        # def LLH(output, truth):
-        #     # print ("prediction", np.sum(prediction.coordinates[:,1:]))
-
-        #     # smear prediction with gaussian to do a likelihood style
-        #     gaussWidth = 5
-        #     jointLogLikelihood = 0
-        #     totalEMD = 0
-        #     totalEtrue = []
-        #     totalEpred = []
-        #     for batchNo in torch.unique(output.coordinates[:,0]):
-        #         batchPredCoords = output.coordinates[output.coordinates[:,0] == batchNo][:,1:].float()
-        #         batchTrueCoords = truth.coordinates[truth.coordinates[:,0] == batchNo][:,1:].float()
-
-        #         nTrue = batchTrueCoords.shape[0]
-        #         nPred = batchPredCoords.shape[0]
-
-        #         batchPredE = output.features[output.coordinates[:,0] == batchNo][:,0]
-        #         # batchPredProb = output.features[output.coordinates[:,0] == batchNo][:,1]
-        #         batchTrueE = truth.features[truth.coordinates[:,0] == batchNo]
-
-        #         batchPredEtotal = torch.sum(batchPredE)
-        #         batchTrueEtotal = torch.sum(batchTrueE)
-
-        #         normedBatchPredE = torch.abs(batchPredE/batchPredEtotal)
-        #         normedBatchTrueE = batchTrueE/batchTrueEtotal
-
-        #         # mags = torch.prod(torch.stack((normedBatchPredE.repeat((nTrue, 1)),
-        #         #                                torch.swapaxes(normedBatchTrueE.flatten().repeat((nPred, 1)), 0, 1))),
-        #         #                   0)
-        #         # mags = normedBatchTrueE
-        #         distances = torch.linalg.norm(torch.sub(batchPredCoords.repeat((nTrue, 1, 1)),
-        #                                                 torch.swapaxes(batchTrueCoords.repeat((nPred, 1, 1)), 0, 1)),
-        #                                       dim = 2)
-        #         # print ("NTrue", nTrue)
-        #         # print ("NPred", nPred)
-        #         # print ("dist shape", distances.shape)
-        #         probs = torch.sum(normedBatchTrueE*normalP(distances, gaussWidth), 0)
-        #         # print ("prob shape ", probs)
-        #         jointLogLikelihood += torch.sum(normedBatchPredE*torch.log(probs))
-        #         # print ("LL shape", jointLogLikelihood.shape)
-        #         if torch.any(torch.isnan(probs)):
-        #             print ("wow, shit's broken")
-
-        #     nLogL = -jointLogLikelihood
-
-        #     return nLogL
-
-        # def shapeLoss(output, truth):
-        #     predLLH = LLH(output, truth)
-        #     selfLLH = LLH(truth, truth)
-        #     # print ("LLHs", predLLH, selfLLH)
-        #     return  predLLH - selfLLH
-
-        # def normLoss(output, truth):
-        #     gain = 1.e1
-        #     outputTotal = gain*torch.sum(torch.abs(output.features[:,0]))
-        #     truthTotal = torch.sum(truth.features)
-        #     print ("total Edeps", outputTotal, truthTotal)
-        #     return nn.MSELoss()(outputTotal, truthTotal)
-
-        def criterion(output, truth):
-            diff = (output - truth).features
-            return nn.MSELoss()(diff, torch.zeros_like(diff))
         
         optimizer = optim.SGD(self.parameters(), lr=1.e-3, momentum = 0.9)
 
@@ -239,63 +170,10 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 continue
 
             dataLoader.setFileLoadOrder()
-            for j, (hitList, trackList) in tqdm.tqdm(enumerate(dataLoader.load()),
-                                                     total = dataLoader.batchesPerEpoch):
+            for j, (larpix, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
+                                               total = dataLoader.batchesPerEpoch):
                 if j < self.n_iter:
                     continue
-
-                ME.clear_global_coordinate_manager()
-
-                hitCoordTensors = []
-                hitFeatureTensors = []
-
-                trackCoordTensors = []
-                trackFeatureTensors = []
-
-                emptyTrackFeatureTensors = []
-
-                for hits, tracks in zip(hitList, trackList):
-
-                    trackX, trackZ, trackY, dE = tracks
-                    trackCoords = torch.FloatTensor([trackX, trackY, trackZ]).T
-                    trackFeature = torch.FloatTensor([dE]).T
-
-                    trackdEthreshold = 0.25
-                    thresholdMask = (trackFeature > trackdEthreshold).flatten()
-
-                    trackCoords = trackCoords[thresholdMask]
-                    trackFeature = trackFeature[thresholdMask]
-                
-                    trackCoordTensors.append(trackCoords)
-                    trackFeatureTensors.append(trackFeature)
-
-                    emptyTrackFeatureTensors.append(torch.zeros_like(trackFeature))
-
-                    hitsX, hitsY, hitsZ, hitsQ = hits
-                    hitCoords = torch.FloatTensor([hitsX, hitsY, hitsZ]).T
-                    hitFeature = torch.FloatTensor([hitsQ]).T
-                    
-                    hitCoordTensors.append(hitCoords)
-                    hitFeatureTensors.append(hitFeature)
-
-                hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
-                                                                hitFeatureTensors,
-                                                                dtype = torch.int32)
-                
-                trackCoords, trackFeature = ME.utils.sparse_collate(trackCoordTensors, 
-                                                                    trackFeatureTensors,
-                                                                    dtype = torch.int32)
-
-                emptyTrackCoords, emptyTrackFeature = ME.utils.sparse_collate(trackCoordTensors, 
-                                                                              emptyTrackFeatureTensors,
-                                                                              dtype = torch.int32)
-                
-                larpix = ME.SparseTensor(features = hitFeature.to(device),
-                                         coordinates = hitCoords.to(device))
-                edep = ME.SparseTensor(features = trackFeature.to(device),
-                                       coordinates = trackCoords.to(device))
-                edepEmpty = ME.SparseTensor(features = emptyTrackFeature.to(device),
-                                            coordinates = emptyTrackCoords.to(device))
 
                 optimizer.zero_grad()
 
