@@ -193,7 +193,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 loss = criterion(output, edep)
                 print ("loss", self.n_epoch, self.n_iter, loss)
                 with open("log", 'a') as logFile:
-                # with open("unionDomainLog", 'a') as logFile:
                     logFile.write('{} \t {} \t {} \n'.format(self.n_epoch, 
                                                              self.n_iter, 
                                                              loss.item()))

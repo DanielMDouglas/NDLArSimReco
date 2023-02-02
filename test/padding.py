@@ -85,7 +85,8 @@ def main(args):
 
     dl.loadNextFile(0)
 
-    theseHits, theseTracks = dl.load_event(6)
+    theseHits, theseTracks = dl.load_event(5)
+    # theseHits, theseTracks = dl.load_event(3)
     
     hitList = [theseHits]
     trackList = [theseTracks]
@@ -144,44 +145,37 @@ def main(args):
         hitCoordTensors.append(hitCoords)
         hitFeatureTensors.append(hitFeature)
 
-        allCoords = torch.concat((hitCoords, trackCoords))
+        # allCoords = torch.concat((hitCoords, trackCoords))
 
-        padCoords = []
+        # padCoords = []
         
-        print ("voxel Limits:",
-               torch.min(allCoords[:,0]), torch.max(allCoords[:,0]),
-               torch.min(allCoords[:,1]), torch.max(allCoords[:,1]),
-               torch.min(allCoords[:,2]), torch.max(allCoords[:,2]),)
+        # print ("voxel Limits:",
+        #        torch.min(allCoords[:,0]), torch.max(allCoords[:,0]),
+        #        torch.min(allCoords[:,1]), torch.max(allCoords[:,1]),
+        #        torch.min(allCoords[:,2]), torch.max(allCoords[:,2]),)
 
-        xMin = torch.min(allCoords[:, 0])
-        xMax = torch.max(allCoords[:, 0])
-        nX = int(xMax - xMin) + 1
-        xSpace = torch.linspace(xMin, xMax, nX)
+        # xMin = torch.min(allCoords[:, 0])
+        # xMax = torch.max(allCoords[:, 0])
+        # nX = int(xMax - xMin) + 1
+        # xSpace = torch.linspace(xMin, xMax, nX)
 
-        yMin = torch.min(allCoords[:, 1])
-        yMax = torch.max(allCoords[:, 1])
-        nY = int(yMax - yMin) + 1
-        ySpace = torch.linspace(yMin, yMax, nY)
+        # yMin = torch.min(allCoords[:, 1])
+        # yMax = torch.max(allCoords[:, 1])
+        # nY = int(yMax - yMin) + 1
+        # ySpace = torch.linspace(yMin, yMax, nY)
 
-        zMin = torch.min(allCoords[:, 2])
-        zMax = torch.max(allCoords[:, 2])
-        nZ = int(zMax - zMin) + 1
-        zSpace = torch.linspace(zMin, zMax, nZ)
-        
-        
-        # for i in xSpace:
-        #     for j in ySpace:
-        #         for k in zSpace:
-        #             padCoords.append([i.item(), j.item(), k.item()])
+        # zMin = torch.min(allCoords[:, 2])
+        # zMax = torch.max(allCoords[:, 2])
+        # nZ = int(zMax - zMin) + 1
+        # zSpace = torch.linspace(zMin, zMax, nZ)
+                
+        # padCoords = torch.cartesian_prod(xSpace, ySpace, zSpace)
+        # print ("made pad coords", padCoords.shape)
 
-        # print (padCoords)
-        # padCoords = torch.Tensor(np.array(padCoords))
-        # print (padCoords.shape)
-        padCoords = torch.cartesian_prod(xSpace, ySpace, zSpace)
-        print ("made pad coords", padCoords.shape)
+        padCoords = trackCoords
 
         padFeature = torch.zeros((padCoords.shape[0], 1))
-
+        
         padCoordTensors.append(padCoords)
         padFeatureTensors.append(padFeature)
 

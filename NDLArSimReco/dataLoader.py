@@ -160,7 +160,8 @@ def array_to_sparseTensor(hitList, trackList):
     trackCoordTensors = []
     trackFeatureTensors = []
 
-    emptyTrackFeatureTensors = []
+    padCoordTensors = []
+    padFeatureTensors = []
     
     for hits, tracks in zip(hitList, trackList):
         
@@ -185,6 +186,13 @@ def array_to_sparseTensor(hitList, trackList):
             
         hitCoordTensors.append(hitCoords)
         hitFeatureTensors.append(hitFeature)
+
+        padCoords = trackCoords
+        padFeature = torch.zeros((padCoords.shape[0], 1))
+        
+        padCoordTensors.append(padCoords)
+        padFeatureTensors.append(padFeature)
+
             
     hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
                                                     hitFeatureTensors,
@@ -194,17 +202,17 @@ def array_to_sparseTensor(hitList, trackList):
                                                         trackFeatureTensors,
                                                         dtype = torch.int32)
     
-    emptyTrackCoords, emptyTrackFeature = ME.utils.sparse_collate(trackCoordTensors, 
-                                                                  emptyTrackFeatureTensors,
-                                                                  dtype = torch.int32)
+    padCoords, padFeature = ME.utils.sparse_collate(padCoordTensors, 
+                                                    padFeatureTensors,
+                                                    dtype = torch.int32)
                 
     larpix = ME.SparseTensor(features = hitFeature.to(device),
                              coordinates = hitCoords.to(device))
     edep = ME.SparseTensor(features = trackFeature.to(device),
                            coordinates = trackCoords.to(device))
-    edepEmpty = ME.SparseTensor(features = emptyTrackFeature.to(device),
-                                coordinates = emptyTrackCoords.to(device))
+    pad = ME.SparseTensor(features = padFeature.to(device),
+                          coordinates = padCoords.to(device))
 
-    larpix = larpix + edepEmpty
+    larpix = larpix + pad
     
     return larpix, edep
