@@ -21,7 +21,7 @@ import os
 
 import ot
 
-from .loss import *
+from .loss import MSE as criterion
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, out_feat, D, manifest):
@@ -192,11 +192,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     
                 loss = criterion(output, edep)
                 print ("loss", self.n_epoch, self.n_iter, loss)
-                with open("log", 'a') as logFile:
-                    logFile.write('{} \t {} \t {} \n'.format(self.n_epoch, 
-                                                             self.n_iter, 
-                                                             loss.item()))
-                    
+                self.training_report(loss)
+                
                 loss.backward()
                 optimizer.step()
         
@@ -211,7 +208,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                       'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
                         self.make_checkpoint(checkpointFile)
 
-                        # self.training_report(loss, accuracy)
+                        # self.training_report(loss)
 
                         device.empty_cache()
                     except AttributeError:
@@ -221,70 +218,55 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.n_epoch += 1
             self.n_iter = 0
 
-    def training_report(self, loss, acc):
+    def training_report(self, loss):
         """
         Add to the running report file at a certain moment in the training process
         """
 
         with open(self.reportFile, 'a') as rf:
-            rf.write('{} \t {} \t {} \t {} \n'.format(self.n_epoch, 
-                                                      self.n_iter, 
-                                                      loss, 
-                                                      acc))
+            rf.write('{} \t {} \t {} \n'.format(self.n_epoch, 
+                                                self.n_iter, 
+                                                loss))
         
-    def evaluate(self):
+    def evaluate(self, dataLoader):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
         """
 
-        evalBatches = 50
-        # evalBatches = 10
+        # evalBatches = 50
+        evalBatches = 10
        
         report = False
         # report = True
         
-        criterion = nn.CrossEntropyLoss()
+        dataLoader.setFileLoadOrder()
 
         lossList = []
-        accList = []
-
-        for (labelsPDG, 
-             coords, 
-             features) in tqdm.tqdm(load_batch(self.manifest['testfile'],
-                                               n_iter = evalBatches),
-                                    total = evalBatches):
+        for (larpix, edep) in tqdm.tqdm(dataLoader.load(),
+                                        total = dataLoader.batchesPerEpoch):
             
-            labels = torch.Tensor([LABELS.index(l) for l in labelsPDG]).to(device)
-            data = ME.SparseTensor(torch.FloatTensor(features).to(device),
-                                   coordinates=torch.FloatTensor(coords).to(device))
-
             if report:
                 with profile(activities=[ProfilerActivity.CUDA],
                              profile_memory = True,
                              record_shapes = True) as prof:
                     with record_function("model_inference"):
-                        prediction = self(data)
+                        prediction = self(larpix)
 
                 print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                 row_limit = 10))
 
             else:
-                prediction = self(data)
+                prediction = self(larpix)
 
-            loss = criterion(prediction.F.squeeze(), labels.long())
+            loss = criterion(prediction, edep)
             
             self.n_iter += 1
 
             lossList.append(float(loss))
-        
-            prediction = torch.argmax(prediction.features, dim = 1)
-            accuracy = sum(prediction == labels)/len(prediction)
-
-            accList.append(float(accuracy))
 
             # if not self.n_iter % 10:
             device.empty_cache()
 
-        return lossList, accList
+        return lossList
 

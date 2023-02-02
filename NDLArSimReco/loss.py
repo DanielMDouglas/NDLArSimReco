@@ -68,6 +68,6 @@ import torch.nn as nn
 #     print ("total Edeps", outputTotal, truthTotal)
 #     return nn.MSELoss()(outputTotal, truthTotal)
 
-def criterion(output, truth):
+def MSE(output, truth):
     diff = (output - truth).features
     return nn.MSELoss()(diff, torch.zeros_like(diff))

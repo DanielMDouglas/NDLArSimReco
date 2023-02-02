@@ -1,5 +1,6 @@
 import torch
 # torch.manual_seed(12)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 import random
 # random.seed(12)
@@ -11,8 +12,6 @@ import yaml
 import os
             
 def main(args):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
