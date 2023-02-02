@@ -77,11 +77,15 @@ def main(args):
                                     out_feat = 1,
                                     D = 3,
                                     manifest = manifest).to(device)
-    net.load_checkpoint(args.checkpoint)
+    if args.checkpoint:
+        try:
+            net.load_checkpoint(args.checkpoint)
+        except IOError:
+            print ("could not load from checkpoint!")
 
     dl.loadNextFile(0)
 
-    theseHits, theseTracks = dl.load_event(3)
+    theseHits, theseTracks = dl.load_event(6)
     
     hitList = [theseHits]
     trackList = [theseTracks]
@@ -91,6 +95,9 @@ def main(args):
 
     trackCoordTensors = []
     trackFeatureTensors = []
+
+    padCoordTensors = []
+    padFeatureTensors = []
 
     for hits, tracks in zip(hitList, trackList):
 
@@ -103,6 +110,8 @@ def main(args):
 
         trackCoords = trackCoords[thresholdMask]
         trackFeature = trackFeature[thresholdMask]
+
+        print ("track center point", torch.mean(trackCoords.float(), dim = 0))
 
         trackCoordTensors.append(trackCoords)
         trackFeatureTensors.append(trackFeature)
@@ -124,8 +133,57 @@ def main(args):
         hitCoords = hitCoordsFilled
         hitFeature = hitFeatureFilled
         
+        print ("hits center point", torch.mean(hitCoords.float(), dim = 0))
+        centerDisp = torch.mean(hitCoords.float(), dim = 0) - torch.mean(trackCoords.float(), dim = 0)
+        print ("center displacement", centerDisp)
+        centerDisp = torch.Tensor([0, 0, 0])
+        
+        hitCoords = (hitCoords.float() - centerDisp).int()
+        print ("hits center point (shifted)", torch.mean(hitCoords.float(), dim = 0))
+
         hitCoordTensors.append(hitCoords)
         hitFeatureTensors.append(hitFeature)
+
+        allCoords = torch.concat((hitCoords, trackCoords))
+
+        padCoords = []
+        
+        print ("voxel Limits:",
+               torch.min(allCoords[:,0]), torch.max(allCoords[:,0]),
+               torch.min(allCoords[:,1]), torch.max(allCoords[:,1]),
+               torch.min(allCoords[:,2]), torch.max(allCoords[:,2]),)
+
+        xMin = torch.min(allCoords[:, 0])
+        xMax = torch.max(allCoords[:, 0])
+        nX = int(xMax - xMin) + 1
+        xSpace = torch.linspace(xMin, xMax, nX)
+
+        yMin = torch.min(allCoords[:, 1])
+        yMax = torch.max(allCoords[:, 1])
+        nY = int(yMax - yMin) + 1
+        ySpace = torch.linspace(yMin, yMax, nY)
+
+        zMin = torch.min(allCoords[:, 2])
+        zMax = torch.max(allCoords[:, 2])
+        nZ = int(zMax - zMin) + 1
+        zSpace = torch.linspace(zMin, zMax, nZ)
+        
+        
+        # for i in xSpace:
+        #     for j in ySpace:
+        #         for k in zSpace:
+        #             padCoords.append([i.item(), j.item(), k.item()])
+
+        # print (padCoords)
+        # padCoords = torch.Tensor(np.array(padCoords))
+        # print (padCoords.shape)
+        padCoords = torch.cartesian_prod(xSpace, ySpace, zSpace)
+        print ("made pad coords", padCoords.shape)
+
+        padFeature = torch.zeros((padCoords.shape[0], 1))
+
+        padCoordTensors.append(padCoords)
+        padFeatureTensors.append(padFeature)
 
         
     hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
@@ -138,21 +196,27 @@ def main(args):
                                                         trackFeatureTensors,
                                                         dtype = torch.int32)
 
-    emptyFeats = [torch.zeros_like(thisTrackFeatureTensor)
-                  for thisTrackFeatureTensor in trackFeatureTensors]
+    # emptyFeats = [torch.zeros_like(thisTrackFeatureTensor)
+    #               for thisTrackFeatureTensor in trackFeatureTensors]
     
-    trackCoordsEmpty, trackFeatureEmpty = ME.utils.sparse_collate(trackCoordTensors, 
-                                                                  emptyFeats,
-                                                                  dtype = torch.int32)
+    # trackCoordsEmpty, trackFeatureEmpty = ME.utils.sparse_collate(trackCoordTensors, 
+    #                                                               emptyFeats,
+    #                                                               dtype = torch.int32)
+    padCoords, padFeature = ME.utils.sparse_collate(padCoordTensors,
+                                                    padFeatureTensors,
+                                                    dtype = torch.int32)
     
     larpix = ME.SparseTensor(features = hitFeature.to(device),
                              coordinates = hitCoords.to(device))
     edep = ME.SparseTensor(features = trackFeature.to(device),
                            coordinates = trackCoords.to(device))
-    edepEmpty = ME.SparseTensor(features = trackFeatureEmpty.to(device),
-                                coordinates = trackCoordsEmpty.to(device))
+    # edepEmpty = ME.SparseTensor(features = trackFeatureEmpty.to(device),
+    #                             coordinates = trackCoordsEmpty.to(device))
+    pad = ME.SparseTensor(features = padFeature.to(device),
+                          coordinates = padCoords.to(device))
 
-    larpix = larpix + edepEmpty
+    # larpix = larpix + edepEmpty
+    larpix = larpix + pad
 
     # do some training loops on just this image -- see if I can learn a single thing
     optimizer = optim.SGD(net.parameters(), lr = 1.e-2, momentum = 0.9)
@@ -193,7 +257,7 @@ if __name__ == '__main__':
                         default = "/home/dan/studies/NDLArSimReco/NDLArSimReco/manifests/localTestManifest.yaml",
                         help = "network manifest yaml file")
     parser.add_argument('-c', '--checkpoint', type = str,
-                        default = None,
+                        default = "",
                         help = "checkpoint file to start from")
     
     

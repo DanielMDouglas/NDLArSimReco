@@ -73,7 +73,7 @@ if __name__ == '__main__':
                         action = 'store_true',
                         help = "print extra debug messages")
     parser.add_argument('-c', '--checkpoint', type = str,
-                        default = None,
+                        default = "",
                         help = "checkpoint file to start from")
     parser.add_argument('-b', '--batchSize', type = int,
                         default = 10,
