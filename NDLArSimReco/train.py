@@ -34,8 +34,7 @@ def main(args):
         infileList = infilePath
         print ("loading files from list", infileList)
     print ("initializing data loader...")
-    dl = DataLoader(infileList)
-    
+    dl = DataLoader(infileList, batchSize = manifest['batchSize'])
     
     if args.force:
         # remove previous checkpoints
@@ -75,10 +74,6 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--checkpoint', type = str,
                         default = "",
                         help = "checkpoint file to start from")
-    parser.add_argument('-b', '--batchSize', type = int,
-                        default = 10,
-                        help = "batch size (number of SP images per batch)")
-    
     
     args = parser.parse_args()
     

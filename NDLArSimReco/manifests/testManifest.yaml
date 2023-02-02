@@ -2,7 +2,9 @@ trainfilePath:
   - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/
 testfileList: 
   - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/edep_edep_single_particle_larndsim_6f40f04a-933b-4492-b23c-c40a7b92c673.h5
-outdir: /scratch/dougl215/larndsim_mlp_train3
+outdir: /scratch/dougl215/larndsim_CNN
+
+batchSize: 64
 
 nEpochs: 10
 

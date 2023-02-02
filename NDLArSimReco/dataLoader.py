@@ -178,8 +178,6 @@ def array_to_sparseTensor(hitList, trackList):
         trackCoordTensors.append(trackCoords)
         trackFeatureTensors.append(trackFeature)
 
-        emptyTrackFeatureTensors.append(torch.zeros_like(trackFeature))
-        
         hitsX, hitsY, hitsZ, hitsQ = hits
         hitCoords = torch.FloatTensor([hitsX, hitsY, hitsZ]).T
         hitFeature = torch.FloatTensor([hitsQ]).T
