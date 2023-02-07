@@ -10,7 +10,7 @@ from NDLArSimReco.dataLoader import DataLoader
 
 import yaml
 import os
-            
+
 def main(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
@@ -75,5 +75,5 @@ if __name__ == '__main__':
                         help = "checkpoint file to start from")
     
     args = parser.parse_args()
-    
+
     main(args)

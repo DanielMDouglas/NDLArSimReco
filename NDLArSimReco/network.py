@@ -170,8 +170,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 continue
 
             dataLoader.setFileLoadOrder()
-            for j, (larpix, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
-                                               total = dataLoader.batchesPerEpoch):
+            for j, (hits, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
+                                             total = dataLoader.batchesPerEpoch):
                 if j < self.n_iter:
                     continue
 
@@ -182,13 +182,13 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                  profile_memory = True,
                                  record_shapes = True) as prof:
                         with record_function("model_inference"):
-                            output = self(larpix)
+                            output = self(hits)
 
                     print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                     row_limit = 10))
                     
                 else:
-                    output = self(larpix)
+                    output = self(hits)
                     
                 loss = criterion(output, edep)
                 print ("loss", self.n_epoch, self.n_iter, loss)

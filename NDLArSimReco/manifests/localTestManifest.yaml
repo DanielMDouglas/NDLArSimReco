@@ -1,13 +1,13 @@
 trainfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda_pared.h5
 testfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda_pared.h5
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
 batchSize: 10
 
-nEpochs: 10
+nEpochs: 1
 
 layers:
 
