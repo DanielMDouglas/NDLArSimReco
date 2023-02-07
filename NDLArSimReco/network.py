@@ -266,7 +266,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             lossList.append(float(loss))
 
             # if not self.n_iter % 10:
-            device.empty_cache()
+            # device.empty_cache()
 
         return lossList
 
