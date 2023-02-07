@@ -11,7 +11,7 @@ reqs = ["numpy",
         'LarpixParser @ git+https://github.com/DanielMDouglas/larpix_readout_parser',
         'NDeventDisplay @ git+https://github.com/DanielMDouglas/NDeventDisplay',
         "torch",
-        "MinkowskiEngine",
+        # "MinkowskiEngine",
         "POT",
         ]
 
