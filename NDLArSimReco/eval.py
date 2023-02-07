@@ -22,7 +22,7 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ExampleNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
 
     epochs = np.unique([int(checkpoint.split('_')[-2]) for checkpoint in manifest['checkpoints']])
 
@@ -88,7 +88,7 @@ def main(args):
     plt.savefig(os.path.join(plotDir,
                              'lossAcc.png'))
     
-    outArray = np.ndarray((7, len(epoch)))
+    outArray = np.ndarray((4, len(epoch)))
     outArray[0,:] = epoch
     outArray[1,:] = meanLoss
     outArray[2,:] = errLoss[0,:]
