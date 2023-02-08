@@ -101,23 +101,28 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.load_state_dict(checkpoint['model'], strict=False)
 
     def make_output_tree(self):
-        if not os.path.exists(self.outDir):
-            os.mkdir(self.outDir)
-            os.mkdir(os.path.join(self.outDir,
-                                  "checkpoints"))
-            os.mkdir(os.path.join(self.outDir,
-                                  "plots"))
-        else:
-            self.manifest['checkpoints'] = []
-            for existingCheckpoint in os.listdir(os.path.join(self.outDir,
-                                                              "checkpoints")):
-                fullPath = os.path.join(self.outDir,
-                                        "checkpoints",
-                                        existingCheckpoint)
-                self.manifest['checkpoints'].append(fullPath)
-            self.manifest['checkpoints'].sort(key = lambda name: int(name.split('_')[-2]) + \
-                                              int(name.split('_')[-1].split('.')[0])*0.001)
+        # make sure the necessary directories exist
+        neededDirs = [self.outDir,
+                      os.path.join(self.outDir,
+                                   "checkpoints"),
+                      os.path.join(self.outDir,
+                                   "checkpoints")]
+        for thisDir in neededDirs:
+            if not os.path.exists(thisDir):
+                os.mkdir(thisDir)
 
+        # update the manifest with existing checkpoints
+        self.manifest['checkpoints'] = []
+        for existingCheckpoint in os.listdir(os.path.join(self.outDir,
+                                                          "checkpoints")):
+            fullPath = os.path.join(self.outDir,
+                                    "checkpoints",
+                                    existingCheckpoint)
+            self.manifest['checkpoints'].append(fullPath)
+        self.manifest['checkpoints'].sort(key = lambda name: int(name.split('_')[-2]) + \
+                                          int(name.split('_')[-1].split('.')[0])*0.001)
+
+        # update the local copy of the manifest
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
             yaml.dump(self.manifest, mf)
             
