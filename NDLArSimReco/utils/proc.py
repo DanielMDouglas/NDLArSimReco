@@ -3,6 +3,8 @@
 # this script will pare away all of the un-needed information, leaving the
 # 3D positions and features of the input hits and edep voxels
 
+# proc (first) -> join (optional) -> cut (optional) -> shift_indices (last) 
+
 import numpy as np
 import h5py
 
@@ -90,9 +92,6 @@ def main(args):
         primPID = get_primary_PID(dl, event_id)
 
         nHits_ev = len(hits[0])
-        nEdep_ev = len(voxels[0])
-        nEv_ev = len(primPID)
-
         evHits = np.empty(nHits_ev, dtype = output_dtypes['hits'])
         evHits['eventID'] = event_id*np.ones(nHits_ev)
         evHits['x'] = np.array(hits[0])
@@ -100,33 +99,44 @@ def main(args):
         evHits['z'] = np.array(hits[2])
         evHits['q'] = np.array(hits[3])
 
+        edepEthreshold = 0.25
+        thresholdMask = (np.array(voxels[3]) > edepEthreshold)
+
+        nEdep_ev = int(sum(thresholdMask))
         evEdep = np.empty(nEdep_ev, dtype = output_dtypes['edep'])
         evEdep['eventID'] = event_id*np.ones(nEdep_ev)
-        evEdep['x'] = np.array(voxels[0])
-        evEdep['y'] = np.array(voxels[1])
-        evEdep['z'] = np.array(voxels[2])
-        evEdep['dE'] = np.array(voxels[3])
+        evEdep['x'] = np.array(voxels[0])[thresholdMask]
+        evEdep['y'] = np.array(voxels[1])[thresholdMask]
+        evEdep['z'] = np.array(voxels[2])[thresholdMask]
+        evEdep['dE'] = np.array(voxels[3])[thresholdMask]
 
+        nEv_ev = len(primPID)
         evEv = np.empty(nEv_ev, dtype = output_dtypes['evinfo'])
         evEv['eventID'] = event_id*np.ones(nEv_ev)
         evEv['primaryPID'] = np.array(primPID)
-
-        nHits_prev = len(outfile['hits'])
-        outfile['hits'].resize((nHits_prev + nHits_ev,))
-        outfile['hits'][nHits_prev:] = evHits
-        
-        nEdep_prev = len(outfile['edep'])
-        outfile['edep'].resize((nEdep_prev + nEdep_ev,))
-        outfile['edep'][nEdep_prev:] = evEdep
-
-        nEv_prev = len(outfile['evinfo'])
-        outfile['evinfo'].resize((nEv_prev + nEv_ev,))
-        outfile['evinfo'][nEv_prev:] = evEv
 
         print (event_id)
         print ("nHits", nHits_ev)
         print ("nEdep", nEdep_ev)
         print ("nEv", nEv_ev)
+
+        if (nHits_ev > 0) and (nEdep_ev > 0) and (nEv_ev == 1):
+            print ("writing")
+            
+            nHits_prev = len(outfile['hits'])
+            outfile['hits'].resize((nHits_prev + nHits_ev,))
+            outfile['hits'][nHits_prev:] = evHits
+            
+            nEdep_prev = len(outfile['edep'])
+            outfile['edep'].resize((nEdep_prev + nEdep_ev,))
+            outfile['edep'][nEdep_prev:] = evEdep
+            
+            nEv_prev = len(outfile['evinfo'])
+            outfile['evinfo'].resize((nEv_prev + nEv_ev,))
+            outfile['evinfo'][nEv_prev:] = evEv
+
+        else:
+            print ("skipping")
 
     outfile.close()
         

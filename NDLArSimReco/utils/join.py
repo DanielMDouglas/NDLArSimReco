@@ -2,6 +2,8 @@
 # this entails adjusting the eventID index
 # and concatenating
 
+# proc (first) -> join (optional) -> cut (optional) -> shift_indices (last) 
+
 import numpy as np
 import h5py
 

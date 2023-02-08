@@ -257,12 +257,6 @@ def array_to_sparseTensor(hitList, edepList):
         
         edepCoords = torch.FloatTensor([edepX, edepY, edepZ]).T
         edepFeature = torch.FloatTensor([dE]).T
-
-        edepdEthreshold = 0.25
-        thresholdMask = (edepFeature > edepdEthreshold).flatten()
-
-        edepCoords = edepCoords[thresholdMask]
-        edepFeature = edepFeature[thresholdMask]
                 
         edepCoordTensors.append(edepCoords)
         edepFeatureTensors.append(edepFeature)
