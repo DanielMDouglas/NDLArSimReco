@@ -223,9 +223,13 @@ class RawDataLoader:
 
         # HACK - force coordinate spacing to be ~1 by dividing by pixel pitch
         # figure out how to properly map pixels to integer coordinates
+        # hits = (np.array(hitZ)/10/self.pixelPitch,
+        #         np.array(hitX)/10/self.pixelPitch,
+        #         np.array(hitY)/10/self.pixelPitch,
+        #         np.array(dQ))
         hits = (np.array(hitZ)/10/self.pixelPitch,
-                np.array(hitX)/10/self.pixelPitch,
                 np.array(hitY)/10/self.pixelPitch,
+                np.array(hitX)/10/self.pixelPitch,
                 np.array(dQ))
         
         voxels = (vox_ev['xBin']/self.pixelPitch,
