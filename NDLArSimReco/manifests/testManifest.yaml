@@ -1,8 +1,8 @@
 trainfilePath: 
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/
+  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/mu-only-3GeV-joined.h5
 testfilePath: 
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/voxels/edep_single_particle_larndsim_6f40f04a-933b-4492-b23c-c40a7b92c673.h5
-outdir: /scratch/dougl215/larndsim_CNN
+  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/mu-only-3GeV-joined.h5
+outdir: /scratch/dougl215/larndsim_mu_only
 
 batchSize: 64
 
