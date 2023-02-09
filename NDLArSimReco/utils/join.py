@@ -22,11 +22,11 @@ def main(args):
         f = h5py.File(infile, 'r')
         # get previous number of events
         try:
-            nEv_prev = np.max(outfile['evinfo']['eventID'])
+            maxEvID_prev = np.max(outfile['evinfo']['eventID'])
         except ValueError:
-            nEv_prev = 0
+            maxEvID_prev = 0
 
-        print (nEv_prev)
+        print ("file", infile)
             
         # increment the eventID in the input arrays
         # for key, value in output_dtypes.items():
@@ -38,7 +38,7 @@ def main(args):
 
             tmp_arr = np.empty(size_thisfile, dtype = output_dtypes[key])
             tmp_arr = f[key][:].copy()
-            tmp_arr['eventID'] += nEv_prev
+            tmp_arr['eventID'] += maxEvID_prev + 1
 
             outfile[key].resize((size_prev + size_thisfile,))
             # append input arrays

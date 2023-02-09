@@ -75,7 +75,7 @@ def get_primary_PID(dl, event_id):
     return traj_ev['pdgId'][primMask]
 
 def main(args):
-    dl = RawDataLoader(args.infileList)
+    dl = RawDataLoader([args.infileList])
     outfile = h5py.File(args.outfile, 'w')
 
     for key, value in output_dtypes.items():
@@ -145,13 +145,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # actually only makes sense to pass one at a time...
-    parser.add_argument('-i', '--infileList', type = str, nargs = '+',
+    parser.add_argument('-i', '--infileList', type = str,
                         default = "/home/dan/studies/NDLArSimReco/NDLArSimReco/manifests/localTestManifest.yaml",
                         help = "input")
     parser.add_argument('-o', '--outfile', type = str,
                         default = "testout.h5",
                         help = "output")
-    
+
     args = parser.parse_args()
     
+    print(args)    
     main(args)
