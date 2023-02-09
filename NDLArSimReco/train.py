@@ -16,7 +16,7 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
 
     if args.checkpoint:
         try:

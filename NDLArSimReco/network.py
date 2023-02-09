@@ -21,10 +21,11 @@ import os
 
 import ot
 
-from .loss import MSE as criterion
+# from .loss import MSE as criterion
+from .loss import NLL as criterion
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
-    def __init__(self, in_feat, out_feat, D, manifest):
+    def __init__(self, in_feat, D, manifest):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
         # save the manifest dict internally

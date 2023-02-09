@@ -259,8 +259,8 @@ def array_to_sparseTensor(hitList, edepList):
         edepZ = edep['z']
         dE = edep['dE']
         
-        edepCoords = torch.FloatTensor([edepX, edepY, edepZ]).T
-        edepFeature = torch.FloatTensor([dE]).T
+        edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
+        edepFeature = torch.FloatTensor(np.array([dE])).T
                 
         edepCoordTensors.append(edepCoords)
         edepFeatureTensors.append(edepFeature)
@@ -271,8 +271,8 @@ def array_to_sparseTensor(hitList, edepList):
         hitsZ = hits['z']
         hitsQ = hits['q']
 
-        hitCoords = torch.FloatTensor([hitsX, hitsY, hitsZ]).T
-        hitFeature = torch.FloatTensor([hitsQ]).T
+        hitCoords = torch.FloatTensor(np.array([hitsX, hitsY, hitsZ])).T
+        hitFeature = torch.FloatTensor(np.array([hitsQ])).T
             
         hitCoordTensors.append(hitCoords)
         hitFeatureTensors.append(hitFeature)
