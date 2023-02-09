@@ -1,0 +1,27 @@
+trainfilePath:
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/utils/test_pared.h5
+testfilePath:
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/utils/test_pared.h5
+
+outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticlePNN
+
+batchSize: 32
+
+nEpochs: 10
+
+layers:
+
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 2

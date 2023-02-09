@@ -1,0 +1,27 @@
+trainfilePath:
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/joined.h5
+testfilePath:
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/joined.h5
+
+outdir: /scratch/dougl215/larndsim_mu_only
+
+batchSize: 64
+
+nEpochs: 10
+
+layers:
+
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 2
