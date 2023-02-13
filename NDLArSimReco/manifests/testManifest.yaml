@@ -1,9 +1,10 @@
 trainfilePath: 
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/mu-only-3GeV-joined.h5
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/shifted/
 testfilePath: 
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/mu-only-3GeV-joined.h5
+  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/shifted/
 outdir: /scratch/dougl215/larndsim_mu_only
 
+loss: MSE
 batchSize: 64
 
 nEpochs: 10

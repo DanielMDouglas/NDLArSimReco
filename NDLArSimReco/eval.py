@@ -22,7 +22,7 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, out_feat=1, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
 
     epochs = np.unique([int(checkpoint.split('_')[-2]) for checkpoint in manifest['checkpoints']])
 

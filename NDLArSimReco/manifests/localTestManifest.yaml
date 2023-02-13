@@ -6,6 +6,7 @@ testfilePath:
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
 batchSize: 10
+loss: MSE
 
 nEpochs: 1
 

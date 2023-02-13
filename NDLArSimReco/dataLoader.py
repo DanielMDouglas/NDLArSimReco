@@ -72,14 +72,14 @@ class DataLoader:
             hits = []
             edep = []
             for evtIndex in self.sampleLoadOrder:
-                if not len(hits) == self.batchSize:
-                    theseHits, theseEdep = self.load_event(evtIndex)
-                    if len(theseHits) == 0:
-                        continue
-                    else:
-                        hits.append(theseHits)
-                        edep.append(theseEdep)
+                theseHits, theseEdep = self.load_event(evtIndex)
+                if len(theseHits) == 0:
+                    continue
                 else:
+                    hits.append(theseHits)
+                    edep.append(theseEdep)
+
+                if len(hits) == self.batchSize:
                     yield array_to_sparseTensor(hits, edep)
                     hits = []
                     edep = []
@@ -255,8 +255,8 @@ def array_to_sparseTensor(hitList, edepList):
         
         # trackX, trackZ, trackY, dE = edep
         edepX = edep['x']
-        edepY = edep['y']
-        edepZ = edep['z']
+        edepY = edep['z']
+        edepZ = edep['y']
         dE = edep['dE']
         
         edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T

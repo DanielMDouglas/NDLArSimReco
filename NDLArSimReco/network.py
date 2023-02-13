@@ -22,7 +22,12 @@ import os
 import ot
 
 # from .loss import MSE as criterion
-from .loss import NLL as criterion
+# from .loss import NLL as criterion
+import loss
+
+lossDict = {'NLL': loss.NLL,
+            'MSE': loss.MSE,
+            'NLLhomog': loss.NLL_homog}
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, D, manifest):
@@ -39,6 +44,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
         self.n_epoch = 0
         self.n_iter = 0
+
+        self.criterion = lossDict[self.manifest['loss']] 
 
         # load layer structure from the manifest
         self.layers = []
@@ -127,36 +134,11 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
             yaml.dump(self.manifest, mf)
             
-    def make_plots(self, lossHist, accHist):
-        plotDir = os.path.join(self.outDir,
-                               "plots")
-            
-        fig = plt.figure()
-        gs = GridSpec(2, 1,
-                      figure = fig,
-                      height_ratios = [0.5, 0.5],
-                      hspace = 0)
-        axLoss = fig.add_subplot(gs[0,:])
-        axAcc = fig.add_subplot(gs[1,:])
-        
-        axLoss.plot(lossHist)
-        axLoss.axhline(y = -np.log(1./5), ls = '--') # "random guess" loss is -log(0.2)
-        
-        axAcc.plot(accHist)
-        
-        axLoss.set_xticklabels([])
-        axLoss.set_ylabel('Loss')
-        axAcc.set_xlabel('Training iteration')
-        axAcc.set_ylabel('Accuracy')
-        
-        plt.savefig(os.path.join(plotDir,
-                                 'lossAcc.png'))
-
     def train(self, dataLoader):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        optimizer = optim.SGD(self.parameters(), lr=1.e-2, momentum = 0.9)
+        optimizer = optim.SGD(self.parameters(), lr=1.e-4, momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
        
@@ -196,8 +178,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 else:
                     output = self(hits)
                     
-                loss = criterion(output, edep)
+                loss = self.criterion(output, edep)
                 print ("loss", self.n_epoch, self.n_iter, loss)
+                print ("self-loss", self.criterion(edep, edep))
                 self.training_report(loss)
                 
                 loss.backward()
@@ -265,7 +248,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             else:
                 prediction = self(larpix)
 
-            loss = criterion(prediction, edep)
+            loss = self.criterion(prediction, edep)
             
             self.n_iter += 1
 
