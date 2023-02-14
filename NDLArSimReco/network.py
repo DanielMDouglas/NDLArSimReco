@@ -21,9 +21,7 @@ import os
 
 import ot
 
-# from .loss import MSE as criterion
-# from .loss import NLL as criterion
-import loss
+from . import loss
 
 lossDict = {'NLL': loss.NLL,
             'MSE': loss.MSE,

@@ -3,45 +3,37 @@ import torch.nn as nn
 
 import numpy as np
 
-def MSE(output, truth):
+def MSE_stock(output, truth):
     diff = (output - truth).features
     return nn.MSELoss()(diff, torch.zeros_like(diff))
 
-def NLL_homog(output, truth):
-    diff = (output - truth).features[0]
-    sigma = torch.ones_like(diff)
-    # u = output.features[:,1] # sigma = exp(u)
-
-    # print ("some diffs nan!", torch.any(torch.isnan(diff)))
-    # print ("some sigma zero!", torch.any(sigma == 0))
-    # if torch.any(sigma == 0):
-    #     print (output.features[:,1][sigma == 0])
+def MSE(output, truth):
+    # this version only considers the 0th feature
+    diff = (output - truth).features[:, 0]
     
-    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
-    # logp = -0.5*torch.pow(diff, 2)*torch.exp(-2*u) - u # + np.log(np.sqrt(2*np.pi)), ignored
+    se = torch.pow(diff, 2)
+    mse = torch.sum(se)/len(diff)
 
-    LL = torch.sum(logp)
+    return mse
 
-    # print ("LL!", LL)
+def NLL_homog(output, truth):
+
+    diff = (output - truth).features[:, 0]
+    sigma = torch.ones_like(diff)
+    
+    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma)
+    # divide by number of points (to help smoothness batch to batch)
+    LL = torch.sum(logp)/len(diff) 
 
     return -LL
 
 def NLL(output, truth):
     diff = (output - truth).features[:,0]
-    # sigma = torch.exp(output.features[:,1])
-    sigma = torch.abs(1 + output.features[:,1])
-    # u = output.features[:,1] # sigma = exp(u)
-
-    # print ("some diffs nan!", torch.any(torch.isnan(diff)))
-    # print ("some sigma zero!", torch.any(sigma == 0))
-    # if torch.any(sigma == 0):
-    #     print (output.features[:,1][sigma == 0])
+    sigma = torch.exp(output.features[:,1])
+    # sigma = torch.abs(1 + output.features[:,1])
     
     logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
-    # logp = -0.5*torch.pow(diff, 2)*torch.exp(-2*u) - u # + np.log(np.sqrt(2*np.pi)), ignored
 
-    LL = torch.sum(logp)
-
-    # print ("LL!", LL)
+    LL = torch.sum(logp)/len(diff)
 
     return -LL

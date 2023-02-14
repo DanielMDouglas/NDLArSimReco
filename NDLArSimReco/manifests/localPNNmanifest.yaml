@@ -1,7 +1,7 @@
 trainfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/utils/test_pared.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_eb5a8574-9c3a-4041-aa5b-590052260d8f.h5
 testfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/utils/test_pared.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_eb5a8574-9c3a-4041-aa5b-590052260d8f.h5
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticlePNN
 
