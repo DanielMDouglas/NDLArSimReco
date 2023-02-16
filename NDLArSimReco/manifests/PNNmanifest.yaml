@@ -1,9 +1,9 @@
 trainfilePath:
   - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/shifted/
 testfilePath:
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/shifted/
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV_test/shifted/
 
-outdir: /scratch/dougl215/larndsim_mu_only_PNN
+outdir: /scratch/dougl215/larndsim_mu_only_PNN_testing
 
 loss: NLL
 batchSize: 128
