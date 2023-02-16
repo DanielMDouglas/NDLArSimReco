@@ -16,7 +16,37 @@ from matplotlib.gridspec import GridSpec
 
 import yaml
 import os
-            
+
+def plot(manifest, epoch, meanLoss, errLoss):
+    plotDir = os.path.join(manifest['outdir'],
+                           "plots")
+
+    fig = plt.figure()
+    ax = fig.gca()
+        
+    errLoss = np.abs(np.array(errLoss).T - np.array(meanLoss))
+    print ("shape: ", np.array(errLoss).shape)
+    ax.errorbar(epoch, meanLoss, 
+                yerr = errLoss, 
+                fmt = 'o')
+    
+    ax.set_ylabel('Loss')
+    ax.set_xlabel('Epoch')
+    
+    plt.savefig(os.path.join(plotDir,
+                             'lossAcc.png'))
+
+def save_record(manifest, epoch, meanLoss, errLoss):
+    outArray = np.ndarray((4, len(epoch)))
+    outArray[0,:] = epoch
+    outArray[1,:] = meanLoss
+    outArray[2,:] = errLoss[:,0]
+    outArray[3,:] = errLoss[:,1]
+
+    np.savetxt(os.path.join(manifest['outdir'],
+                            "testEval.dat"),
+               outArray)
+
 def main(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
@@ -49,6 +79,7 @@ def main(args):
         print ("loading files from list", infileList)
     print ("initializing data loader...")
     dl = DataLoader(infileList, batchSize = manifest['batchSize'])
+    # dl = DataLoader(infileList, batchSize = 32)
 
     meanLoss = []
     errLoss = []
@@ -58,46 +89,18 @@ def main(args):
     for e, checkpoint in enumerate(lastCheckpoints):
         net.load_checkpoint(checkpoint)
         loss = net.evaluate(dl)
+        print ("epoch:", e, "loss:", loss)
 
         epoch.append(e)
 
         meanLoss.append(np.mean(loss))
         errLoss.append(np.quantile(loss, (0.16, 0.84)))
 
-    plotDir = os.path.join(manifest['outdir'],
-                           "plots")
+    meanLoss = np.array(meanLoss)
+    errLoss = np.array(errLoss)
             
-    fig = plt.figure()
-    gs = GridSpec(2, 1,
-                  figure = fig,
-                  height_ratios = [0.5, 0.5],
-                  hspace = 0)
-    ax = fig.gca()
-        
-    errLoss = np.abs(np.array(errLoss).T - np.array(meanLoss))
-    print ("shape: ", np.array(errLoss).shape)
-    ax.errorbar(epoch, meanLoss, 
-                yerr = errLoss, 
-                fmt = 'o')
-    ax.axhline(y = -np.log(1./5), 
-               ls = '--') # "random guess" loss is -log(0.2)
-    
-    ax.set_ylabel('Loss')
-    ax.set_xlabel('Epoch')
-    
-    plt.savefig(os.path.join(plotDir,
-                             'lossAcc.png'))
-    
-    outArray = np.ndarray((4, len(epoch)))
-    outArray[0,:] = epoch
-    outArray[1,:] = meanLoss
-    outArray[2,:] = errLoss[0,:]
-    outArray[3,:] = errLoss[1,:]
-
-    np.savetxt(os.path.join(manifest['outdir'],
-                            "testEval.dat"),
-               outArray)
-
+    save_record(manifest, epoch, meanLoss, errLoss)
+    plot(manifest, epoch, meanLoss, errLoss)
     
 if __name__ == '__main__':
 

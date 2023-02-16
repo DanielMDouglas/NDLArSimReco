@@ -24,8 +24,10 @@ import ot
 from . import loss
 
 lossDict = {'NLL': loss.NLL,
+            'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
-            'NLLhomog': loss.NLL_homog}
+            'NLLhomog': loss.NLL_homog,
+}
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, D, manifest):
@@ -42,6 +44,11 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
         self.n_epoch = 0
         self.n_iter = 0
+
+        if 'lr' in self.manifest:
+            self.lr = self.manifest['lr']
+        else:
+            self.lr = 1.e-4
 
         self.criterion = lossDict[self.manifest['loss']] 
 
@@ -103,7 +110,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(filename, 'rb') as f:
             checkpoint = torch.load(f,
                                     map_location = device)
-            print (checkpoint.keys())
             self.load_state_dict(checkpoint['model'], strict=False)
 
     def make_output_tree(self):
@@ -136,7 +142,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        optimizer = optim.SGD(self.parameters(), lr=1.e-4, momentum = 0.9)
+        optimizer = optim.SGD(self.parameters(), 
+                              lr = self.lr, 
+                              momentum = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
        
@@ -177,8 +185,10 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     output = self(hits)
                     
                 loss = self.criterion(output, edep)
-                print ("loss", self.n_epoch, self.n_iter, loss)
-                print ("self-loss", self.criterion(edep, edep))
+                print ("epoch:", self.n_epoch, 
+                       "iter:", self.n_iter, 
+                       "loss:", loss.item(),
+                       end = '\r')
                 self.training_report(loss)
                 
                 loss.backward()
@@ -205,6 +215,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.n_epoch += 1
             self.n_iter = 0
 
+        print ("final loss:", loss.item())        
+
     def training_report(self, loss):
         """
         Add to the running report file at a certain moment in the training process
@@ -221,8 +233,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         do not update the model!
         """
 
-        # evalBatches = 50
-        evalBatches = 10
+        evalBatches = 50
+        # evalBatches = 10
        
         report = False
         # report = True
@@ -230,9 +242,11 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         dataLoader.setFileLoadOrder()
 
         lossList = []
-        for (larpix, edep) in tqdm.tqdm(dataLoader.load(),
-                                        total = dataLoader.batchesPerEpoch):
-            
+        for i, (larpix, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
+                                           total = evalBatches):
+            if i >= evalBatches:
+                break # we're done here
+
             if report:
                 with profile(activities=[ProfilerActivity.CUDA],
                              profile_memory = True,
@@ -247,13 +261,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 prediction = self(larpix)
 
             loss = self.criterion(prediction, edep)
+            # print ("loss", loss.item())
             
-            self.n_iter += 1
-
-            lossList.append(float(loss))
-
-            # if not self.n_iter % 10:
-            # device.empty_cache()
+            lossList.append(loss.item())
 
         return lossList
 

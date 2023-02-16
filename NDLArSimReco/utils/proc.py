@@ -119,8 +119,10 @@ def main(args):
         evEdep = np.empty(nEdep_ev, dtype = output_dtypes['edep'])
         evEdep['eventID'] = event_id*np.ones(nEdep_ev)
         evEdep['x'] = np.array(voxels[0])[thresholdMask]
-        evEdep['y'] = np.array(voxels[1])[thresholdMask]
-        evEdep['z'] = np.array(voxels[2])[thresholdMask]
+        # evEdep['y'] = np.array(voxels[1])[thresholdMask]
+        # evEdep['z'] = np.array(voxels[2])[thresholdMask]
+        evEdep['z'] = np.array(voxels[1])[thresholdMask]
+        evEdep['y'] = np.array(voxels[2])[thresholdMask]
         evEdep['dE'] = np.array(voxels[3])[thresholdMask]
 
         nEv_ev = len(primPID)
