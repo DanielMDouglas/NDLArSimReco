@@ -1,5 +1,5 @@
 import MinkowskiEngine as ME
-ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
+# ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
 import torch
 import torch.nn as nn
@@ -22,6 +22,7 @@ import os
 import ot
 
 from . import loss
+from .layers import uresnet_layers
 
 lossDict = {'NLL': loss.NLL,
             'NLL_reluError': loss.NLL_reluError,
@@ -87,6 +88,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 layer_in_feat = layer_out_feat
             elif layer['type'] == 'MGlobalPooling':
                 self.layers.append(ME.MinkowskiGlobalPooling())
+            elif layer['type'] == 'UResNet':
+                layer_out_feat = int(layer['out_feat'])
+                self.layers.append(uresnet_layers.presetUResNet(layer_in_feat,
+                                                                layer_out_feat,
+                                                                int(layer['depth'])))
+                layer_in_feat = layer_out_feat
 
         self.network = nn.Sequential(*self.layers)
             
@@ -138,7 +145,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
             yaml.dump(self.manifest, mf)
             
-    def train(self, dataLoader):
+    def train(self, dataLoader, dropout = False):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
@@ -171,6 +178,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
                 optimizer.zero_grad()
 
+                if dropout:
+                    hits = nn.Dropout()(hits)
+                
                 if report:
                     with profile(activities=[ProfilerActivity.CUDA],
                                  profile_memory = True,
@@ -182,8 +192,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                     row_limit = 10))
                     
                 else:
-                    output = self(hits)
-                    
+                    output = self.forward(hits)
+
+                print ("hits", hits.shape)
                 loss = self.criterion(output, edep)
                 print ("epoch:", self.n_epoch, 
                        "iter:", self.n_iter, 
@@ -266,4 +277,3 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             lossList.append(loss.item())
 
         return lossList
-

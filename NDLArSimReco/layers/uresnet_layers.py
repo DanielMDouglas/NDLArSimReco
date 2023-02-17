@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import MinkowskiEngine as ME
+ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
 from NDLArSimReco.layers.blocks import ResNetBlock, CascadeDilationBlock, ASPP
 from NDLArSimReco.layers.activation_normalization_factories import activations_construct
@@ -117,15 +118,20 @@ class UResNetEncoder(torch.nn.Module):
         #     print(name, param.shape, param)
         x = self.input_layer(x)
         encoderTensors = [x]
+        encoderCMK = [x.coordinate_map_key]
         features_ppn = [x]
         for i, layer in enumerate(self.encoding_block):
+            # print ("encoding layer", i)
+            # print ("tensor", x)
             x = self.encoding_block[i](x)
             encoderTensors.append(x)
+            encoderCMK.append(x.coordinate_map_key)
             x = self.encoding_conv[i](x)
             features_ppn.append(x)
 
         result = {
             "encoderTensors": encoderTensors,
+            "encoderCMK": encoderCMK,
             "features_ppn": features_ppn,
             "finalTensor": x
         }
@@ -139,11 +145,13 @@ class UResNetEncoder(torch.nn.Module):
         # x = ME.SparseTensor(features, coordinates=coords)
         encoderOutput = self.encoder(input)
         encoderTensors = encoderOutput['encoderTensors']
+        encoderCMK = encoderOutput['encoderCMK']
         finalTensor = encoderOutput['finalTensor']
         # decoderTensors = self.decoder(finalTensor, encoderTensors)
 
         res = {
             'encoderTensors': encoderTensors,
+            'encoderCMK': encoderCMK,
             # 'decoderTensors': decoderTensors,
             'finalTensor': finalTensor,
             'features_ppn': encoderOutput['features_ppn']
@@ -202,19 +210,26 @@ class UResNetDecoder(torch.nn.Module):
         self.decoding_block = []
         self.decoding_conv = []
         for i in range(self.depth-2, -1, -1):
-            m = []
-            m.append(normalizations_construct(self.norm, self.nPlanes[i+1], **self.norm_args))
-            m.append(activations_construct(
-                self.activation_name, **self.activation_args))
-            m.append(ME.MinkowskiConvolutionTranspose(
+            # m = []
+            # m.append(normalizations_construct(self.norm, self.nPlanes[i+1], **self.norm_args))
+            # m.append(activations_construct(
+            #     self.activation_name, **self.activation_args))
+            # m.append(ME.MinkowskiConvolutionTranspose(
+            #     in_channels=self.nPlanes[i+1],
+            #     out_channels=self.nPlanes[i],
+            #     kernel_size=2,
+            #     stride=2,
+            #     dimension=self.D,
+            #     bias=self.allow_bias))
+            # m = nn.Sequential(*m)
+            self.decoding_conv.append(ME.MinkowskiConvolutionTranspose(
                 in_channels=self.nPlanes[i+1],
                 out_channels=self.nPlanes[i],
                 kernel_size=2,
                 stride=2,
                 dimension=self.D,
-                bias=self.allow_bias))
-            m = nn.Sequential(*m)
-            self.decoding_conv.append(m)
+                bias=self.allow_bias)
+            )
             m = []
             for j in range(self.reps):
                 m.append(ResNetBlock(self.nPlanes[i] * (2 if j == 0 else 1),
@@ -231,7 +246,7 @@ class UResNetDecoder(torch.nn.Module):
         self.decoding_conv = nn.Sequential(*self.decoding_conv)
 
 
-    def decoder(self, final, encoderTensors):
+    def decoder(self, final, encoderTensors, encoderCMK):
         '''
         Vanilla UResNet Decoder
 
@@ -248,15 +263,20 @@ class UResNetDecoder(torch.nn.Module):
         decoderTensors = []
         x = final
         for i, layer in enumerate(self.decoding_conv):
+            # eTensor = encoderTensors[-i-2]
             eTensor = encoderTensors[-i-2]
-            x = layer(x)
+            eCMK = encoderCMK[-i-2]
+            x = layer(x, eCMK)
+            # print ('decoder layer', i)
+            # print ("encoder layer output", eTensor)
+            # print ("decoder layer input", x)
             x = ME.cat(eTensor, x)
             x = self.decoding_block[i](x)
             decoderTensors.append(x)
         return decoderTensors
 
-    def forward(self, final, encoderTensors):
-        return self.decoder(final, encoderTensors)
+    def forward(self, final, encoderTensors, encoderCMK):
+        return self.decoder(final, encoderTensors, encoderCMK)
 
 
 class UResNet(torch.nn.Module):
@@ -312,14 +332,11 @@ class UResNet(torch.nn.Module):
         #             sum(p.numel() for p in self.parameters() if p.requires_grad)))
 
     def forward(self, input):
-        coords = input[:, 0:self.D+1].int()
-        features = input[:, self.D+1:].float()
-
-        x = ME.SparseTensor(features, coordinates=coords)
-        encoderOutput = self.encoder(x)
+        encoderOutput = self.encoder(input)
         encoderTensors = encoderOutput['encoderTensors']
+        encoderCMK = encoderOutput['encoderCMK']
         finalTensor = encoderOutput['finalTensor']
-        decoderTensors = self.decoder(finalTensor, encoderTensors)
+        decoderTensors = self.decoder(finalTensor, encoderTensors, encoderCMK)
 
         res = {
             'encoderTensors': encoderTensors,
@@ -327,4 +344,172 @@ class UResNet(torch.nn.Module):
             'finalTensor': finalTensor,
             'features_ppn': encoderOutput['features_ppn']
         }
-        return res
+        print (res['finalTensor'].shape)
+        return res['finalTensor']
+
+
+class presetUResNet(torch.nn.Module):
+    def __init__(self, in_features, out_features, depth = 2, nFilters = 8, name='preseturesnet'):
+        super(presetUResNet, self).__init__()
+
+        self.depth = depth # number of pool/unpool layers, not including input + output
+        self.nFilters = nFilters
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        self.input_block = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = self.in_features,
+                out_channels = self.nFilters,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+            ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.nFilters,
+                out_channels = self.nFilters,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+            ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.nFilters,
+                out_channels = self.nFilters,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+        self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
+                                for i in range(self.depth)]
+        self.featureSizesDec = [(out_feat, in_feat)  
+                                for in_feat, out_feat in self.featureSizesEnc]
+        self.featureSizesDec.reverse()
+        
+        self.encoding_layers = []
+        self.decoding_layers = []
+
+        self.encoding_blocks = []
+        self.decoding_blocks = []
+        
+        for i in range(self.depth):
+            self.encoding_layers.append(
+                ME.MinkowskiConvolution(
+                    in_channels = self.featureSizesEnc[i][0],
+                    out_channels = self.featureSizesEnc[i][1],
+                    kernel_size = 2,
+                    stride = 2,
+                    dimension = 3)
+            )
+            self.encoding_blocks.append(
+                nn.Sequential(
+                    ME.MinkowskiConvolution(
+                        in_channels = self.featureSizesEnc[i][1],
+                        out_channels = self.featureSizesEnc[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    ME.MinkowskiReLU(),
+                    ME.MinkowskiConvolution(
+                        in_channels = self.featureSizesEnc[i][1],
+                        out_channels = self.featureSizesEnc[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    ME.MinkowskiReLU(),
+                    ME.MinkowskiConvolution(
+                        in_channels = self.featureSizesEnc[i][1],
+                        out_channels = self.featureSizesEnc[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                )
+            )
+
+        for i in range(self.depth):
+            self.decoding_layers.append(
+                ME.MinkowskiConvolutionTranspose(
+                    in_channels = self.featureSizesDec[i][0],
+                    out_channels = self.featureSizesDec[i][1],
+                    kernel_size = 2,
+                    stride = 2,
+                    dimension = 3)
+            )
+            self.decoding_blocks.append(
+                nn.Sequential(
+                    ME.MinkowskiConvolution(
+                        in_channels = 2*self.featureSizesDec[i][1],
+                        out_channels = 2*self.featureSizesDec[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    ME.MinkowskiReLU(),
+                    ME.MinkowskiConvolution(
+                        in_channels = 2*self.featureSizesDec[i][1],
+                        out_channels = 2*self.featureSizesDec[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    ME.MinkowskiReLU(),
+                    ME.MinkowskiConvolution(
+                        in_channels = 2*self.featureSizesDec[i][1],
+                        out_channels = self.featureSizesDec[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                )
+            )
+        # self.decoding_layers.reverse()
+
+        self.output_block = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = self.featureSizesDec[-1][1],
+                out_channels = self.featureSizesDec[-1][1],
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+            ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.featureSizesDec[-1][1],
+                out_channels = self.featureSizesDec[-1][1],
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+            ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.featureSizesDec[-1][1],
+                out_channels = self.out_features,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+        
+    def forward(self, input):
+        encodingFeatures = []
+        coordKeys = []
+
+        input = self.input_block(input)
+        for i in range(self.depth):
+            encodingFeatures.append(input)
+            coordKeys.append(input.coordinate_map_key)
+
+            input = self.encoding_layers[i](input)
+            input = self.encoding_blocks[i](input)
+
+        for i in range(self.depth):
+            skip = encodingFeatures[-i -1]
+            cmk = coordKeys[-i -1]
+            
+            input = self.decoding_layers[i](input, cmk)
+            input = ME.cat(input, skip)
+            input = self.decoding_blocks[i](input)
+
+        input = self.output_block(input)
+        
+        return input
