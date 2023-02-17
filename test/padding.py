@@ -50,7 +50,7 @@ def plot_edep_multi(tensorList, labelList, colors):
     ax.set_ylabel(r'y [mm]')
     ax.set_zlabel(r'z [mm]')
 
-from NDLArSimReco.loss import MSE 
+from NDLArSimReco.loss import * 
 # from NDLArSimReco.loss import NLL_homog as criterion 
 from NDLArSimReco.loss import NLL as criterion 
 
@@ -85,7 +85,7 @@ def main(args):
     # larpix, edep = dl.load_event(3)
     larpix, edep = next(dl.load())
     
-    optimizer = optim.SGD(net.parameters(), lr = 1.e-2, momentum = 0.9)
+    optimizer = optim.SGD(net.parameters(), lr = 1.e-3, momentum = 0.9)
 
     # prediction = net(larpix)
     # plot_edep(prediction, 'prediction before training')
@@ -101,13 +101,19 @@ def main(args):
         prediction = net(larpix)
 
         loss = criterion(prediction, edep)
-        MSEloss = MSE(prediction, edep)
+        # NLLloss = NLL(prediction, edep)
+        # NLLselfloss = NLL(prediction, prediction)
+        # MSEloss = MSE(prediction, edep)
         loss.backward()
         optimizer.step()
         print ("iter:", i,
-               "NLL loss:", loss.item(),
-               "MSE loss:", MSEloss.item(),
-               end = '\r')
+               "NLLr loss:", loss.item(),
+               # "NLL loss:", NLLloss.item(),
+               # "self-NLL loss:", NLLselfloss.item(),
+               # "MSE loss:", MSEloss.item(),
+               # end = '\r',
+               )
+        print()
         with open("trainLog", 'a') as logFile:
             # with open("unionDomainLog", 'a') as logFile:
             logFile.write('{} \t {} \n'.format(i, loss.item()))
@@ -119,6 +125,7 @@ def main(args):
     plot_edep(edep, 'truth')
     plot_edep(larpix, 'larpix')
     plot_edep(prediction - edep, 'diff')
+    plot_edep(prediction, 'predicted error', 1)
     plot_edep_multi([larpix, edep],
                     ['larnd-sim', 'edep-sim'],
                     ['black', 'red'])

@@ -74,6 +74,19 @@ def get_primary_PID(dl, event_id):
     primMask = traj_ev['parentID'] == -1
     return traj_ev['pdgId'][primMask]
 
+def write_to_output(outfile, evHits, evEdep, evEv):
+    nHits_prev = len(outfile['hits'])
+    outfile['hits'].resize((nHits_prev + nHits_ev,))
+    outfile['hits'][nHits_prev:] = evHits
+    
+    nEdep_prev = len(outfile['edep'])
+    outfile['edep'].resize((nEdep_prev + nEdep_ev,))
+    outfile['edep'][nEdep_prev:] = evEdep
+            
+    nEv_prev = len(outfile['evinfo'])
+    outfile['evinfo'].resize((nEv_prev + nEv_ev,))
+    outfile['evinfo'][nEv_prev:] = evEv
+
 def main(args):
     dl = RawDataLoader([args.infileList])
     outfile = h5py.File(args.outfile, 'w')
@@ -124,18 +137,7 @@ def main(args):
 
         if (nHits_ev > 0) and (nEdep_ev > 0) and (nEv_ev == 1):
             print ("writing")
-            
-            nHits_prev = len(outfile['hits'])
-            outfile['hits'].resize((nHits_prev + nHits_ev,))
-            outfile['hits'][nHits_prev:] = evHits
-            
-            nEdep_prev = len(outfile['edep'])
-            outfile['edep'].resize((nEdep_prev + nEdep_ev,))
-            outfile['edep'][nEdep_prev:] = evEdep
-            
-            nEv_prev = len(outfile['evinfo'])
-            outfile['evinfo'].resize((nEv_prev + nEv_ev,))
-            outfile['evinfo'][nEv_prev:] = evEv
+            write_to_output(outfile, evHits, evEdep, evEv)
 
         else:
             print ("skipping")

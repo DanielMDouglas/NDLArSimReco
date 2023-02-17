@@ -4,7 +4,7 @@ testfilePath:
   - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/mu_only_train.h5
   - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/mu_only_test.h5
 
-outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticlePNN
+outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticlePNN_dropout
 
 batchSize: 32
 loss: NLL

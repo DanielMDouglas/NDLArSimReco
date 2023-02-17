@@ -248,9 +248,12 @@ def array_to_sparseTensor(hitList, edepList):
     edepCoordTensors = []
     edepFeatureTensors = []
 
-    padCoordTensors = []
-    padFeatureTensors = []
-    
+    LarpixPadCoordTensors = []
+    LarpixPadFeatureTensors = []
+
+    EdepPadCoordTensors = []
+    EdepPadFeatureTensors = []
+
     for hits, edep in zip(hitList, edepList):
         
         # trackX, trackZ, trackY, dE = edep
@@ -277,11 +280,17 @@ def array_to_sparseTensor(hitList, edepList):
         hitCoordTensors.append(hitCoords)
         hitFeatureTensors.append(hitFeature)
 
-        padCoords = edepCoords
-        padFeature = torch.zeros((padCoords.shape[0], 1))
+        LarpixPadCoords = edepCoords
+        LarpixPadFeature = torch.zeros((LarpixPadCoords.shape[0], 1))
         
-        padCoordTensors.append(padCoords)
-        padFeatureTensors.append(padFeature)
+        LarpixPadCoordTensors.append(LarpixPadCoords)
+        LarpixPadFeatureTensors.append(LarpixPadFeature)
+
+        EdepPadCoords = hitCoords
+        EdepPadFeature = torch.zeros((EdepPadCoords.shape[0], 1))
+        
+        EdepPadCoordTensors.append(EdepPadCoords)
+        EdepPadFeatureTensors.append(EdepPadFeature)
 
             
     hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
@@ -289,20 +298,35 @@ def array_to_sparseTensor(hitList, edepList):
                                                     dtype = torch.int32)
                 
     edepCoords, edepFeature = ME.utils.sparse_collate(edepCoordTensors, 
-                                                        edepFeatureTensors,
-                                                        dtype = torch.int32)
+                                                      edepFeatureTensors,
+                                                      dtype = torch.int32)
     
-    padCoords, padFeature = ME.utils.sparse_collate(padCoordTensors, 
-                                                    padFeatureTensors,
-                                                    dtype = torch.int32)
+    LarpixPadCoords, LarpixPadFeature = ME.utils.sparse_collate(LarpixPadCoordTensors, 
+                                                                LarpixPadFeatureTensors,
+                                                                dtype = torch.int32)
+
+    EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
+                                                            EdepPadFeatureTensors,
+                                                            dtype = torch.int32)
                 
     larpix = ME.SparseTensor(features = hitFeature.to(device),
                              coordinates = hitCoords.to(device))
     edep = ME.SparseTensor(features = edepFeature.to(device),
-                           coordinates = edepCoords.to(device))
-    pad = ME.SparseTensor(features = padFeature.to(device),
-                          coordinates = padCoords.to(device))
+                           coordinates = edepCoords.to(device),
+                           coordinate_manager = larpix.coordinate_manager,
+                           )
+    LarpixPad = ME.SparseTensor(features = LarpixPadFeature.to(device),
+                                coordinate_map_key = edep.coordinate_map_key,
+                                coordinate_manager = larpix.coordinate_manager,
+                                )
+    EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
+                              coordinate_map_key = larpix.coordinate_map_key,
+                              coordinate_manager = larpix.coordinate_manager,
+                              )
 
-    larpix = larpix + pad
+    # print (larpix.shape, edep.shape, LarpixPad.shape)
+    larpix = larpix + LarpixPad
+    edep = edep + EdepPad
+    # print (larpix.shape, edep.shape)
     
     return larpix, edep
