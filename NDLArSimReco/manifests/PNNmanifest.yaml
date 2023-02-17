@@ -1,5 +1,5 @@
 trainfilePath:
-  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/shifted/
+  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/shifted/
 testfilePath:
   - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV_test/shifted/
 
@@ -12,6 +12,21 @@ nEpochs: 10
 
 layers:
 
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
+- type: MConvolution
+  kernel_size: 5
+  stride: 1
+  out_feat: 128
+- type: MReLU
 - type: MConvolution
   kernel_size: 5
   stride: 1

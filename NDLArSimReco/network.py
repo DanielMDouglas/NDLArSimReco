@@ -87,6 +87,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 layer_in_feat = layer_out_feat
             elif layer['type'] == 'MGlobalPooling':
                 self.layers.append(ME.MinkowskiGlobalPooling())
+            elif layer['type'] == 'UResNet':
+                self.layers.append(ME.MinkowskiGlobalPooling())
 
         self.network = nn.Sequential(*self.layers)
             
