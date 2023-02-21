@@ -15,4 +15,4 @@ layers:
 
 - type: UResNet
   out_feat: 2
-  depth: 4
+  depth: 2

@@ -19,8 +19,6 @@ import tqdm
 
 import os
 
-import ot
-
 from . import loss
 from .layers import uresnet_layers
 
@@ -152,6 +150,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         optimizer = optim.SGD(self.parameters(), 
                               lr = self.lr, 
                               momentum = 0.9)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
         nEpochs = int(self.manifest['nEpochs'])
        
@@ -223,6 +222,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             
             self.n_epoch += 1
             self.n_iter = 0
+
+            scheduler.step()
 
         print ("final loss:", loss.item())        
 
