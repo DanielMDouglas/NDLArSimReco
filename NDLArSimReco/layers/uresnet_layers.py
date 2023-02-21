@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 import MinkowskiEngine as ME
 ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
@@ -349,7 +351,7 @@ class UResNet(torch.nn.Module):
 
 
 class presetUResNet(torch.nn.Module):
-    def __init__(self, in_features, out_features, depth = 2, nFilters = 8, name='preseturesnet'):
+    def __init__(self, in_features, out_features, depth = 2, nFilters = 16, name='preseturesnet'):
         super(presetUResNet, self).__init__()
 
         self.depth = depth # number of pool/unpool layers, not including input + output
@@ -365,22 +367,22 @@ class presetUResNet(torch.nn.Module):
                 stride = 1,
                 dimension = 3,
             ),
-            ME.MinkowskiReLU(),
-            ME.MinkowskiConvolution(
-                in_channels = self.nFilters,
-                out_channels = self.nFilters,
-                kernel_size = 3,
-                stride = 1,
-                dimension = 3,
-            ),
-            ME.MinkowskiReLU(),
-            ME.MinkowskiConvolution(
-                in_channels = self.nFilters,
-                out_channels = self.nFilters,
-                kernel_size = 3,
-                stride = 1,
-                dimension = 3,
-            ),
+            # ME.MinkowskiReLU(),
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.nFilters,
+            #     out_channels = self.nFilters,
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
+            # ME.MinkowskiReLU(),
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.nFilters,
+            #     out_channels = self.nFilters,
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
         )
 
         self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
@@ -402,7 +404,7 @@ class presetUResNet(torch.nn.Module):
                     out_channels = self.featureSizesEnc[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3)
+                    dimension = 3).to(device)
             )
             self.encoding_blocks.append(
                 nn.Sequential(
@@ -420,13 +422,13 @@ class presetUResNet(torch.nn.Module):
                         stride = 1,
                         dimension = 3),
                     ME.MinkowskiReLU(),
-                    ME.MinkowskiConvolution(
-                        in_channels = self.featureSizesEnc[i][1],
-                        out_channels = self.featureSizesEnc[i][1],
-                        kernel_size = 3,
-                        stride = 1,
-                        dimension = 3),
-                )
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = self.featureSizesEnc[i][1],
+                    #     out_channels = self.featureSizesEnc[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                ).to(device)
             )
 
         for i in range(self.depth):
@@ -436,17 +438,17 @@ class presetUResNet(torch.nn.Module):
                     out_channels = self.featureSizesDec[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3)
+                    dimension = 3).to(device)
             )
             self.decoding_blocks.append(
                 nn.Sequential(
-                    ME.MinkowskiConvolution(
-                        in_channels = 2*self.featureSizesDec[i][1],
-                        out_channels = 2*self.featureSizesDec[i][1],
-                        kernel_size = 3,
-                        stride = 1,
-                        dimension = 3),
-                    ME.MinkowskiReLU(),
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = 2*self.featureSizesDec[i][1],
+                    #     out_channels = 2*self.featureSizesDec[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                    # ME.MinkowskiReLU(),
                     ME.MinkowskiConvolution(
                         in_channels = 2*self.featureSizesDec[i][1],
                         out_channels = 2*self.featureSizesDec[i][1],
@@ -460,19 +462,19 @@ class presetUResNet(torch.nn.Module):
                         kernel_size = 3,
                         stride = 1,
                         dimension = 3),
-                )
+                ).to(device)
             )
         # self.decoding_layers.reverse()
 
         self.output_block = nn.Sequential(
-            ME.MinkowskiConvolution(
-                in_channels = self.featureSizesDec[-1][1],
-                out_channels = self.featureSizesDec[-1][1],
-                kernel_size = 3,
-                stride = 1,
-                dimension = 3,
-            ),
-            ME.MinkowskiReLU(),
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.featureSizesDec[-1][1],
+            #     out_channels = self.featureSizesDec[-1][1],
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
+            # ME.MinkowskiReLU(),
             ME.MinkowskiConvolution(
                 in_channels = self.featureSizesDec[-1][1],
                 out_channels = self.featureSizesDec[-1][1],

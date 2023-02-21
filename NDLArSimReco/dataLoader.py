@@ -325,6 +325,8 @@ def array_to_sparseTensor(hitList, edepList):
                               )
 
     # print (larpix.shape, edep.shape, LarpixPad.shape)
+    # print ("larpix center", torch.mean(larpix.coordinates.float(), dim = 0))
+    # print ("edep center", torch.mean(edep.coordinates.float(), dim = 0))
     larpix = larpix + LarpixPad
     edep = edep + EdepPad
     # print (larpix.shape, edep.shape)

@@ -171,8 +171,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 continue
 
             dataLoader.setFileLoadOrder()
-            for j, (hits, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
-                                             total = dataLoader.batchesPerEpoch):
+            pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+                             total = dataLoader.batchesPerEpoch)
+            for j, (hits, edep) in pbar:
                 if j < self.n_iter:
                     continue
 
@@ -194,12 +195,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 else:
                     output = self.forward(hits)
 
-                print ("hits", hits.shape)
                 loss = self.criterion(output, edep)
-                print ("epoch:", self.n_epoch, 
-                       "iter:", self.n_iter, 
-                       "loss:", loss.item(),
-                       end = '\r')
+
+                pbar.set_description("loss: "+str(round(loss.item(), 4)))
                 self.training_report(loss)
                 
                 loss.backward()

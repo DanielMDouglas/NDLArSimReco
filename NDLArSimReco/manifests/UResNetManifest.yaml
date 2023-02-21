@@ -1,18 +1,17 @@
 trainfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/mu_only_train.h5
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/shifted
 testfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/mu_only_test.h5
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV_test/shifted/
 
-outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/larndsim_UResNet_testing
+outdir: /scratch/dougl215/larndsim_mu_only_UResNet_testing
 
 loss: NLL
-batchSize: 10
+batchSize: 128
 lr: 1.e-4
 
 nEpochs: 10
 
 layers:
-
 - type: UResNet
   out_feat: 2
   depth: 4
