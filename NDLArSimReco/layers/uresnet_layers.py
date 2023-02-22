@@ -366,8 +366,8 @@ class presetUResNet(torch.nn.Module):
                 kernel_size = 3,
                 stride = 1,
                 dimension = 3,
-            ),
-            # ME.MinkowskiReLU(),
+            ), 
+           # ME.MinkowskiReLU(),
             # ME.MinkowskiConvolution(
             #     in_channels = self.nFilters,
             #     out_channels = self.nFilters,

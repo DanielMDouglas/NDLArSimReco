@@ -1,3 +1,4 @@
+
 import MinkowskiEngine as ME
 ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
