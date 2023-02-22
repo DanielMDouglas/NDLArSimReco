@@ -88,7 +88,7 @@ def main(args):
 
     for e, checkpoint in enumerate(lastCheckpoints):
         net.load_checkpoint(checkpoint)
-        loss = net.evaluate(dl)
+        loss = net.evaluateLoop(dl)
         print ("epoch:", e, "loss:", loss)
 
         epoch.append(e)
