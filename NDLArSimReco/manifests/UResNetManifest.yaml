@@ -7,9 +7,9 @@ outdir: /scratch/dougl215/larndsim_mu_only_UResNet_testing
 
 loss: NLL
 batchSize: 128
-lr: 1.e-4
+lr: 1.e-5
 
-nEpochs: 10
+nEpochs: 30
 
 layers:
 - type: UResNet
