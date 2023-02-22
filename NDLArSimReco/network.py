@@ -29,17 +29,18 @@ lossDict = {'NLL': loss.NLL,
 }
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
-    def __init__(self, in_feat, D, manifest):
+    def __init__(self, in_feat, D, manifest, make_output = True):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
         # save the manifest dict internally
         self.manifest = manifest
 
         # make the output data structure
-        self.outDir = self.manifest['outdir']
-        self.reportFile = os.path.join(self.manifest['outdir'],
-                                       'train_report.dat')
-        self.make_output_tree()
+        if make_output:
+            self.outDir = self.manifest['outdir']
+            self.reportFile = os.path.join(self.manifest['outdir'],
+                                           'train_report.dat')
+            self.make_output_tree()
 
         self.n_epoch = 0
         self.n_iter = 0
