@@ -144,7 +144,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
             yaml.dump(self.manifest, mf)
             
-    def train(self, dataLoader, dropout = False):
+    def trainLoop(self, dataLoader, dropout = False):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
@@ -238,7 +238,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                 self.n_iter, 
                                                 loss))
         
-    def evaluate(self, dataLoader):
+    def evalLoop(self, dataLoader):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!

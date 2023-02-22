@@ -50,7 +50,7 @@ def main(args):
             os.remove(reportFile)
         
     print ("training...")
-    net.train(dl)
+    net.trainLoop(dl)
 
     checkpointFile = os.path.join(net.outDir,
                                   'checkpoint_final_{}_{}.ckpt'.format(manifest['nEpochs'], 0))
