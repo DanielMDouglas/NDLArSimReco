@@ -571,7 +571,7 @@ class presetUResNetWithDropout(torch.nn.Module):
                     out_channels = self.featureSizesEnc[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.encoding_blocks.append(
                 nn.Sequential(
@@ -599,8 +599,10 @@ class presetUResNetWithDropout(torch.nn.Module):
                     #     kernel_size = 3,
                     #     stride = 1,
                     #     dimension = 3),
-                ).to(device)
+                )
             )
+        self.encoding_layers = nn.Sequential(*self.encoding_layers)
+        self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
         for i in range(self.depth):
             self.decoding_layers.append(
@@ -639,6 +641,9 @@ class presetUResNetWithDropout(torch.nn.Module):
                     ME.MinkowskiDropout(),
                 ).to(device)
             )
+        self.decoding_layers = nn.Sequential(*self.decoding_layers)
+        self.decoding_blocks = nn.Sequential(*self.decoding_blocks)
+
         # self.decoding_layers.reverse()
 
         self.output_block = nn.Sequential(
@@ -775,6 +780,8 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                     #     dimension = 3),
                 ).to(device)
             )
+        self.encoding_layers = nn.Sequential(*self.encoding_layers)
+        self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
         for i in range(self.depth):
             self.decoding_layers.append(
@@ -814,7 +821,9 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                 ).to(device)
             )
         # self.decoding_layers.reverse()
-
+        self.decoding_layers = nn.Sequential(*self.decoding_layers)
+        self.decoding_blocks = nn.Sequential(*self.decoding_blocks)
+        
         self.output_block = nn.Sequential(
             # ME.MinkowskiConvolution(
             #     in_channels = self.featureSizesDec[-1][1],

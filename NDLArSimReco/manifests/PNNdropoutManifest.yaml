@@ -9,6 +9,7 @@ loss: NLL
 batchSize: 128
 
 nEpochs: 10
+lr: 1.e-3
 
 layers:
 
