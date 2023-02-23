@@ -13,6 +13,6 @@ nEpochs: 10
 
 layers:
 
-- type: UResNet
+- type: UResNetWithDropout
   out_feat: 2
   depth: 2

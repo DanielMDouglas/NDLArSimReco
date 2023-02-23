@@ -28,11 +28,22 @@ def NLL_homog(output, truth):
     return -LL
 
 def NLL(output, truth):
-    diff = (output - truth).features[:,0]
+    diff = torch.relu((output - truth).features[:,0])
     epsilon = 1.e-2
     sigma = torch.exp(output.features[:,1]) + epsilon
     
     logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+    LL = torch.sum(logp)/len(diff)
+
+    return -LL
+
+def NLLeval(output, truth):
+    diff = torch.relu((output - truth).features[:,0])
+    epsilon = 1.e-2
+    sigma = torch.exp(output.features[:,1]) + epsilon
+    
+    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) + np.log(np.sqrt(2*np.pi))
 
     LL = torch.sum(logp)/len(diff)
 

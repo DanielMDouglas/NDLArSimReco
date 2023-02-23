@@ -93,6 +93,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                                 layer_out_feat,
                                                                 int(layer['depth'])))
                 layer_in_feat = layer_out_feat
+            elif layer['type'] == 'UResNetWithDropout':
+                layer_out_feat = int(layer['out_feat'])
+                self.layers.append(uresnet_layers.presetUResNetWithDropout(layer_in_feat,
+                                                                           layer_out_feat,
+                                                                           int(layer['depth'])))
+                layer_in_feat = layer_out_feat
 
         self.network = nn.Sequential(*self.layers)
             
@@ -153,6 +159,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                               momentum = 0.9)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
+        self.train()
+        
         nEpochs = int(self.manifest['nEpochs'])
        
         report = False
@@ -249,6 +257,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
        
         report = False
         # report = True
+
+        self.eval()
         
         dataLoader.setFileLoadOrder()
 
