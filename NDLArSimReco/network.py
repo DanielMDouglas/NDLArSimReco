@@ -85,6 +85,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     layer_out_feat
                 ))
                 layer_in_feat = layer_out_feat
+            elif layer['type'] == 'MDropout':
+                self.layers.append(ME.MinkowskiDropout())
             elif layer['type'] == 'MGlobalPooling':
                 self.layers.append(ME.MinkowskiGlobalPooling())
             elif layer['type'] == 'UResNet':
@@ -94,6 +96,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                                 int(layer['depth'])))
                 layer_in_feat = layer_out_feat
             elif layer['type'] == 'UResNetWithDropout':
+                layer_out_feat = int(layer['out_feat'])
+                self.layers.append(uresnet_layers.presetUResNetWithDropout(layer_in_feat,
+                                                                           layer_out_feat,
+                                                                           int(layer['depth'])))
+                layer_in_feat = layer_out_feat
+            elif layer['type'] == 'UResNetWithDropoutNoNonLin':
                 layer_out_feat = int(layer['out_feat'])
                 self.layers.append(uresnet_layers.presetUResNetWithDropout(layer_in_feat,
                                                                            layer_out_feat,

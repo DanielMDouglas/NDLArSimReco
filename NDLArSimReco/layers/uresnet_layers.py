@@ -690,3 +690,177 @@ class presetUResNetWithDropout(torch.nn.Module):
         input = self.output_block(input)
         
         return input
+
+class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
+    def __init__(self, in_features, out_features, depth = 2, nFilters = 16, name='preseturesnet'):
+        super(presetUResNetWithDropout, self).__init__()
+
+        self.depth = depth # number of pool/unpool layers, not including input + output
+        self.nFilters = nFilters
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        self.input_block = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = self.in_features,
+                out_channels = self.nFilters,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ), 
+           # ME.MinkowskiReLU(),
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.nFilters,
+            #     out_channels = self.nFilters,
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
+            # ME.MinkowskiReLU(),
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.nFilters,
+            #     out_channels = self.nFilters,
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
+        )
+
+        self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
+                                for i in range(self.depth)]
+        self.featureSizesDec = [(out_feat, in_feat)  
+                                for in_feat, out_feat in self.featureSizesEnc]
+        self.featureSizesDec.reverse()
+        
+        self.encoding_layers = []
+        self.decoding_layers = []
+
+        self.encoding_blocks = []
+        self.decoding_blocks = []
+        
+        for i in range(self.depth):
+            self.encoding_layers.append(
+                ME.MinkowskiConvolution(
+                    in_channels = self.featureSizesEnc[i][0],
+                    out_channels = self.featureSizesEnc[i][1],
+                    kernel_size = 2,
+                    stride = 2,
+                    dimension = 3).to(device)
+            )
+            self.encoding_blocks.append(
+                nn.Sequential(
+                    ME.MinkowskiDropout(),
+                    ME.MinkowskiConvolution(
+                        in_channels = self.featureSizesEnc[i][1],
+                        out_channels = self.featureSizesEnc[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    # ME.MinkowskiBatchNorm(self.featureSizesEnc[i][1]),
+                    # ME.MinkowskiReLU(),
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = self.featureSizesEnc[i][1],
+                    #     out_channels = self.featureSizesEnc[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                    # ME.MinkowskiBatchNorm(self.featureSizesEnc[i][1]),
+                    # ME.MinkowskiReLU(),
+                    # ME.MinkowskiReLU(),
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = self.featureSizesEnc[i][1],
+                    #     out_channels = self.featureSizesEnc[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                ).to(device)
+            )
+
+        for i in range(self.depth):
+            self.decoding_layers.append(
+                ME.MinkowskiConvolutionTranspose(
+                    in_channels = self.featureSizesDec[i][0],
+                    out_channels = self.featureSizesDec[i][1],
+                    kernel_size = 2,
+                    stride = 2,
+                    dimension = 3).to(device)
+            )
+            self.decoding_blocks.append(
+                nn.Sequential(
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = 2*self.featureSizesDec[i][1],
+                    #     out_channels = 2*self.featureSizesDec[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                    # ME.MinkowskiReLU(),
+                    # ME.MinkowskiConvolution(
+                    #     in_channels = 2*self.featureSizesDec[i][1],
+                    #     out_channels = 2*self.featureSizesDec[i][1],
+                    #     kernel_size = 3,
+                    #     stride = 1,
+                    #     dimension = 3),
+                    # ME.MinkowskiBatchNorm(2*self.featureSizesDec[i][1]),
+                    # ME.MinkowskiReLU(),
+                    ME.MinkowskiConvolution(
+                        in_channels = 2*self.featureSizesDec[i][1],
+                        out_channels = self.featureSizesDec[i][1],
+                        kernel_size = 3,
+                        stride = 1,
+                        dimension = 3),
+                    # ME.MinkowskiBatchNorm(self.featureSizesDec[i][1]),
+                    # ME.MinkowskiReLU(),
+                    ME.MinkowskiDropout(),
+                ).to(device)
+            )
+        # self.decoding_layers.reverse()
+
+        self.output_block = nn.Sequential(
+            # ME.MinkowskiConvolution(
+            #     in_channels = self.featureSizesDec[-1][1],
+            #     out_channels = self.featureSizesDec[-1][1],
+            #     kernel_size = 3,
+            #     stride = 1,
+            #     dimension = 3,
+            # ),
+            # ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.featureSizesDec[-1][1],
+                out_channels = self.featureSizesDec[-1][1],
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+            # ME.MinkowskiReLU(),
+            ME.MinkowskiConvolution(
+                in_channels = self.featureSizesDec[-1][1],
+                out_channels = self.out_features,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+        
+    def forward(self, input):
+        encodingFeatures = []
+        coordKeys = []
+
+        input = self.input_block(input)
+        for i in range(self.depth):
+            encodingFeatures.append(input)
+            coordKeys.append(input.coordinate_map_key)
+
+            input = self.encoding_layers[i](input)
+            input = self.encoding_blocks[i](input)
+
+        for i in range(self.depth):
+            skip = encodingFeatures[-i -1]
+            cmk = coordKeys[-i -1]
+            
+            input = self.decoding_layers[i](input, cmk)
+            input = ME.cat(input, skip)
+            input = self.decoding_blocks[i](input)
+
+        input = self.output_block(input)
+        
+        return input

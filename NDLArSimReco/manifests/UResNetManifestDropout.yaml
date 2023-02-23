@@ -1,0 +1,17 @@
+trainfilePath:
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV/shifted
+testfilePath:
+  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV_test/shifted/
+
+outdir: /scratch/dougl215/larndsim_mu_only_UResNet_dropout_test2
+
+loss: NLL
+batchSize: 128
+lr: 1.e-3
+
+nEpochs: 30
+
+layers:
+- type: UResNetWithDropout
+  out_feat: 2
+  depth: 4
