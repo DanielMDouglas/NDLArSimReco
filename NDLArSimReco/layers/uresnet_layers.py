@@ -404,7 +404,7 @@ class presetUResNet(torch.nn.Module):
                     out_channels = self.featureSizesEnc[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.encoding_blocks.append(
                 nn.Sequential(
@@ -428,8 +428,10 @@ class presetUResNet(torch.nn.Module):
                     #     kernel_size = 3,
                     #     stride = 1,
                     #     dimension = 3),
-                ).to(device)
+                )
             )
+        self.encoding_layers = nn.Sequential(*self.encoding_layers)
+        self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
         for i in range(self.depth):
             self.decoding_layers.append(
@@ -438,7 +440,7 @@ class presetUResNet(torch.nn.Module):
                     out_channels = self.featureSizesDec[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.decoding_blocks.append(
                 nn.Sequential(
@@ -462,8 +464,11 @@ class presetUResNet(torch.nn.Module):
                         kernel_size = 3,
                         stride = 1,
                         dimension = 3),
-                ).to(device)
+                )
             )
+        self.decoding_layers = nn.Sequential(*self.decoding_layers)
+        self.decoding_blocks = nn.Sequential(*self.decoding_blocks)
+
         # self.decoding_layers.reverse()
 
         self.output_block = nn.Sequential(
@@ -611,7 +616,7 @@ class presetUResNetWithDropout(torch.nn.Module):
                     out_channels = self.featureSizesDec[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.decoding_blocks.append(
                 nn.Sequential(
@@ -639,7 +644,7 @@ class presetUResNetWithDropout(torch.nn.Module):
                     ME.MinkowskiBatchNorm(self.featureSizesDec[i][1]),
                     ME.MinkowskiReLU(),
                     ME.MinkowskiDropout(),
-                ).to(device)
+                )
             )
         self.decoding_layers = nn.Sequential(*self.decoding_layers)
         self.decoding_blocks = nn.Sequential(*self.decoding_blocks)
@@ -750,7 +755,7 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                     out_channels = self.featureSizesEnc[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.encoding_blocks.append(
                 nn.Sequential(
@@ -778,7 +783,7 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                     #     kernel_size = 3,
                     #     stride = 1,
                     #     dimension = 3),
-                ).to(device)
+                )
             )
         self.encoding_layers = nn.Sequential(*self.encoding_layers)
         self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
@@ -790,7 +795,7 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                     out_channels = self.featureSizesDec[i][1],
                     kernel_size = 2,
                     stride = 2,
-                    dimension = 3).to(device)
+                    dimension = 3)
             )
             self.decoding_blocks.append(
                 nn.Sequential(
@@ -818,7 +823,7 @@ class presetUResNetWithDropoutNoNonLin(torch.nn.Module):
                     # ME.MinkowskiBatchNorm(self.featureSizesDec[i][1]),
                     # ME.MinkowskiReLU(),
                     ME.MinkowskiDropout(),
-                ).to(device)
+                )
             )
         # self.decoding_layers.reverse()
         self.decoding_layers = nn.Sequential(*self.decoding_layers)
