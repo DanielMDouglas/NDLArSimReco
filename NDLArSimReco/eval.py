@@ -88,7 +88,7 @@ def main(args):
 
     for e, checkpoint in enumerate(lastCheckpoints):
         net.load_checkpoint(checkpoint)
-        loss = net.evaluateLoop(dl)
+        loss = net.evalLoop(dl, evalMode = not args.trainMode)
         print ("epoch:", e, "loss:", loss)
 
         epoch.append(e)
@@ -113,6 +113,9 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose',
                         action = 'store_true',
                         help = "print extra debug messages")
+    parser.add_argument('-t', '--trainMode',
+                        action = 'store_true',
+                        help = "run the evaluation loop in train mode instead of eval mode (useful for networks with dropout)")
     
     
     args = parser.parse_args()

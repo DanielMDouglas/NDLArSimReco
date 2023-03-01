@@ -254,7 +254,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                 self.n_iter, 
                                                 loss))
         
-    def evalLoop(self, dataLoader):
+    def evalLoop(self, dataLoader, evalMode = True):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
@@ -266,7 +266,10 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         report = False
         # report = True
 
-        self.eval()
+        if evalMode:
+            self.eval()
+        else:
+            self.train()
         
         dataLoader.setFileLoadOrder()
 
