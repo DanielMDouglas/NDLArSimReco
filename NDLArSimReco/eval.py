@@ -17,26 +17,13 @@ from matplotlib.gridspec import GridSpec
 import yaml
 import os
 
-def plot(manifest, epoch, meanLoss, errLoss):
-    plotDir = os.path.join(manifest['outdir'],
-                           "plots")
-
-    fig = plt.figure()
-    ax = fig.gca()
-        
-    errLoss = np.abs(np.array(errLoss).T - np.array(meanLoss))
-    print ("shape: ", np.array(errLoss).shape)
-    ax.errorbar(epoch, meanLoss, 
-                yerr = errLoss, 
-                fmt = 'o')
+def save_record(manifest, checkpointDict):
+    epoch = np.array(list(checkpointDict.keys()))
+    meanLoss = np.array([thisValue['medianLoss']
+                         for thisValue in checkpointDict.values()])
+    errLoss = np.array([thisValue['lossInterval']
+                        for thisValue in checkpointDict.values()])
     
-    ax.set_ylabel('Loss')
-    ax.set_xlabel('Epoch')
-    
-    plt.savefig(os.path.join(plotDir,
-                             'lossAcc.png'))
-
-def save_record(manifest, epoch, meanLoss, errLoss):
     outArray = np.ndarray((4, len(epoch)))
     outArray[0,:] = epoch
     outArray[1,:] = meanLoss
@@ -56,18 +43,35 @@ def main(args):
 
     epochs = np.unique([int(checkpoint.split('_')[-2]) for checkpoint in manifest['checkpoints']])
 
-    lastCheckpoints = []
+    firstCheckpoints = {}
+    lastCheckpoints = {}
 
     for thisEpoch in epochs:
         theseCheckpoints = []
         for checkpoint in manifest['checkpoints']:
             n_epoch = int(checkpoint.split('_')[-2])
+            n_iter = int(checkpoint.split('_')[-1].split('.')[0])
             if thisEpoch == n_epoch:
                 theseCheckpoints.append(checkpoint)
 
-        lastCheckpoints.append(theseCheckpoints[-1])
+        lastCheckpoints[thisEpoch+1] = {'checkpoint': theseCheckpoints[-1],
+                                        'iter': n_iter}
+        if thisEpoch > 0:
+            firstCheckpoints[thisEpoch] = {'checkpoint': theseCheckpoints[0],
+                                           'iter': n_iter}
 
-    print ("last checkpoints: ", lastCheckpoints)
+    finalCheckpoint = os.path.join(manifest['outdir'],
+                                   'checkpoint_final.ckpt') 
+    if os.path.exists(finalCheckpoint):
+        firstCheckpoints[thisEpoch+1] = {'checkpoint': finalCheckpoint,
+                                         'iter': 0}
+
+    if args.useLast:
+        theseCheckpoints = lastCheckpoints
+    else:
+        theseCheckpoints = firstCheckpoints
+
+    print ("using found checkpoints", theseCheckpoints)
 
     infilePath = manifest['testfilePath'] 
     if os.path.isdir(infilePath[0]):
@@ -81,26 +85,22 @@ def main(args):
     dl = DataLoader(infileList, batchSize = manifest['batchSize'])
     # dl = DataLoader(infileList, batchSize = 32)
 
-    meanLoss = []
-    errLoss = []
-
-    epoch = []
-
-    for e, checkpoint in enumerate(lastCheckpoints):
+    for epoch, valDict in theseCheckpoints.items():
+        checkpoint = valDict['checkpoint']
         net.load_checkpoint(checkpoint)
-        loss = net.evalLoop(dl, evalMode = not args.trainMode)
-        print ("epoch:", e, "loss:", loss)
+        loss = net.evalLoop(dl,
+                            nBatches = args.nBatches,
+                            evalMode = not args.trainMode)
+        print ("epoch:", epoch, "loss:", loss)
 
-        epoch.append(e)
+        # meanLoss.append(np.mean(loss))
+        medianLoss = np.median(loss)
+        lossInterval = np.quantile(loss, (0.16, 0.84))
 
-        meanLoss.append(np.mean(loss))
-        errLoss.append(np.quantile(loss, (0.16, 0.84)))
+        valDict['medianLoss'] = medianLoss
+        valDict['lossInterval'] = lossInterval
 
-    meanLoss = np.array(meanLoss)
-    errLoss = np.array(errLoss)
-            
-    save_record(manifest, epoch, meanLoss, errLoss)
-    plot(manifest, epoch, meanLoss, errLoss)
+    save_record(manifest, theseCheckpoints)
     
 if __name__ == '__main__':
 
@@ -116,6 +116,13 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--trainMode',
                         action = 'store_true',
                         help = "run the evaluation loop in train mode instead of eval mode (useful for networks with dropout)")
+    parser.add_argument('-n', '--nBatches',
+                        default = 50,
+                        type = int,
+                        help = "Number of batches from the test dataset to evaluate on each checkpoint")
+    parser.add_argument('-l', '--useLast',
+                        action = 'store_true',
+                        help = "optionally, use the last checkpoint in the epoch as a proxy")
     
     
     args = parser.parse_args()
