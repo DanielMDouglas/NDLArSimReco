@@ -91,21 +91,27 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 self.layers.append(ME.MinkowskiGlobalPooling())
             elif layer['type'] == 'UResNet':
                 layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.presetUResNet(layer_in_feat,
-                                                                layer_out_feat,
-                                                                int(layer['depth'])))
+                self.layers.append(uresnet_layers.UResNet(layer_in_feat,
+                                                          layer_out_feat,
+                                                          int(layer['depth'])))
                 layer_in_feat = layer_out_feat
-            elif layer['type'] == 'UResNetWithDropout':
+            elif layer['type'] == 'UResNetDropout':
                 layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.presetUResNetWithDropout(layer_in_feat,
-                                                                           layer_out_feat,
-                                                                           int(layer['depth'])))
+                self.layers.append(uresnet_layers.UResNet_dropout(layer_in_feat,
+                                                                  layer_out_feat,
+                                                                  int(layer['depth'])))
                 layer_in_feat = layer_out_feat
-            elif layer['type'] == 'UResNetWithDropoutNoNonLin':
+            elif layer['type'] == 'UNet':
                 layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.presetUResNetWithDropout(layer_in_feat,
-                                                                           layer_out_feat,
-                                                                           int(layer['depth'])))
+                self.layers.append(uresnet_layers.UNet(layer_in_feat,
+                                                       layer_out_feat,
+                                                       int(layer['depth'])))
+                layer_in_feat = layer_out_feat
+            elif layer['type'] == 'UNetDropout':
+                layer_out_feat = int(layer['out_feat'])
+                self.layers.append(uresnet_layers.UNet_dropout(layer_in_feat,
+                                                               layer_out_feat,
+                                                               int(layer['depth'])))
                 layer_in_feat = layer_out_feat
 
         self.network = nn.Sequential(*self.layers)
