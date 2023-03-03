@@ -61,7 +61,7 @@ def main(args):
                                            'iter': n_iter}
 
     finalCheckpoint = os.path.join(manifest['outdir'],
-                                   'checkpoint_final.ckpt') 
+                                   'checkpoint_final_'+str(manifest['nEpochs'])+'_0.ckpt') 
     if os.path.exists(finalCheckpoint):
         firstCheckpoints[thisEpoch+1] = {'checkpoint': finalCheckpoint,
                                          'iter': 0}
@@ -91,8 +91,7 @@ def main(args):
         loss = net.evalLoop(dl,
                             nBatches = args.nBatches,
                             evalMode = not args.trainMode)
-        print ("epoch:", epoch, "loss:", loss)
-
+        
         # meanLoss.append(np.mean(loss))
         medianLoss = np.median(loss)
         lossInterval = np.quantile(loss, (0.16, 0.84))
