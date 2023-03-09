@@ -76,14 +76,17 @@ def get_primary_PID(dl, event_id):
 
 def write_to_output(outfile, evHits, evEdep, evEv):
     nHits_prev = len(outfile['hits'])
+    nHits_ev = len(evHits)
     outfile['hits'].resize((nHits_prev + nHits_ev,))
     outfile['hits'][nHits_prev:] = evHits
     
     nEdep_prev = len(outfile['edep'])
+    nEdep_ev = len(evEdep)
     outfile['edep'].resize((nEdep_prev + nEdep_ev,))
     outfile['edep'][nEdep_prev:] = evEdep
             
     nEv_prev = len(outfile['evinfo'])
+    nEv_ev = len(evEv)
     outfile['evinfo'].resize((nEv_prev + nEv_ev,))
     outfile['evinfo'][nEv_prev:] = evEv
 
