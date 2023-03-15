@@ -23,14 +23,16 @@ class ResNetBlock(torch.nn.Module):
                                              stride = 1,
                                              dimension = 3)
         self.act1 = ME.MinkowskiReLU()
-        self.norm1 = ME.MinkowskiBatchNorm()
+        self.norm1 = ME.MinkowskiBatchNorm(in_features)
+        # self.norm1 = Identity()
         self.conv2 = ME.MinkowskiConvolution(in_channels = out_features,
                                              out_channels = out_features,
                                              kernel_size = 3,
                                              stride = 1,
                                              dimension = 3)
         self.act2 = ME.MinkowskiReLU()
-        self.norm2 = ME.MinkowskiBatchNorm()
+        self.norm2 = ME.MinkowskiBatchNorm(out_features)
+        # self.norm2 = Identity()
         
     def forward(self, x):
 

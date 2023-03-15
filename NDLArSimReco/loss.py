@@ -38,6 +38,56 @@ def NLL(output, truth):
 
     return -LL
 
+def moyal_standardized(x):
+    return torch.exp(-(x + torch.exp(-x))/2)/np.sqrt(2*np.pi)
+
+def moyalPDF(x, loc, scale):
+    y = (x - loc)/scale
+    return moyal_standardized(y)/scale
+
+def NLLmoyal(output, truth):
+    # epsilon = 1.e-2
+    # # mean = torch.log(output.features[:,0]) + epsilon
+    # mean = torch.relu(output.features[:,0]) + epsilon
+    # sigma = torch.exp(output.features[:,1]) + epsilon
+
+    meanLL = 0
+    meanUL = 5
+    meanDR = meanUL - meanLL
+    mean = meanDR*torch.sigmoid(output.features[:,0]) + meanLL
+
+    sigmaLL = 1.e-2
+    sigmaUL = meanUL
+    sigmaDR = sigmaUL - sigmaLL
+    sigma = sigmaDR*torch.sigmoid(output.features[:, 1]) + sigmaLL
+
+    obs = truth.features[:,0]
+    
+    y = (obs - mean)/sigma
+
+    print (truth.shape)
+    print ("obs range", torch.min(obs).item(), torch.max(obs).item())
+
+    # print (mean)
+    print (torch.mean(output.features[:,0]).item())
+    print ("mean range", torch.min(mean).item(), torch.max(mean).item())
+    # print (torch.any(torch.isnan(mean)))
+    # print (torch.all(mean > 0))
+
+    # print (sigma)
+    print (torch.mean(output.features[:,1]).item())
+    print ("sigma range", torch.min(sigma).item(), torch.max(sigma).item())
+    # print (torch.any(torch.isnan(sigma)))
+    # print (torch.all(sigma > 0))
+
+    print ("y range", torch.min(y).item(), torch.max(y).item()) 
+
+    logp = -0.5*(y + torch.exp(-y)) - torch.log(sigma) - np.log(np.sqrt(2*np.pi))
+
+    LL = torch.sum(logp)
+
+    return -LL
+
 def NLLeval(output, truth):
     diff = torch.relu((output - truth).features[:,0])
     epsilon = 1.e-2

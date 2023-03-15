@@ -23,6 +23,7 @@ from . import loss
 from .layers import uresnet_layers
 
 lossDict = {'NLL': loss.NLL,
+            'NLLmoyal': loss.NLLmoyal,
             'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
