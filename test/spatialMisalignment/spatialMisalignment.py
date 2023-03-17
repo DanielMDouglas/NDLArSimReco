@@ -29,12 +29,12 @@ def main(args):
     input_position = []
     hit_position = []
     
-    for t0_row in t0_grp:
+    for t0_row in tqdm.tqdm(t0_grp):
 
         t0 = t0_row[0]
         ti = t0 + run_config['time_interval'][0]/run_config['CLOCK_CYCLE']
         tf = t0 + run_config['time_interval'][1]/run_config['CLOCK_CYCLE']
-        print (t0)
+        # print (t0)
 
         packet_mask = (packets['timestamp'] >= ti) & (packets['timestamp'] < tf)
         packets_ev = packets[packet_mask]
@@ -43,21 +43,27 @@ def main(args):
 
         thisTrack = tracks[tracks['eventID'] == trackEvID]
         
-        thisTrackPos = 10*np.array([thisTrack['z'],
-                                    thisTrack['y'],
-                                    thisTrack['x'],
-                                    ]).T
+        if thisTrack:
+            thisTrackPos = 10*np.array([thisTrack['z'],
+                                        thisTrack['y'],
+                                        thisTrack['x'],
+                                        ]).T[0]
         
-        hitX,hitY,hitZ,hitQ = HitParser.hit_parser_charge(t0,
-                                                          packets_ev,
-                                                          geom_dict,
-                                                          run_config,
-                                                          drift_model = 2)
-        thisHitPos = np.array([hitX, hitY, hitZ]).T
+            hitX,hitY,hitZ,hitQ = HitParser.hit_parser_charge(t0,
+                                                              packets_ev,
+                                                              geom_dict,
+                                                              run_config,
+                                                              drift_model = 2)
+            thisHitPos = np.array([hitX, hitY, hitZ]).T
+            
+            input_position.append(thisTrackPos)
+            hit_position.append(np.mean(thisHitPos, axis = 0))
+            # print (thisTrackPos)
+            # print (np.mean(thisHitPos, axis = 0))
+            
+            # print (input_position)
+            # print (hit_position)
         
-        input_position.append(thisTrackPos)
-        hit_position.append(np.mean(thisHitPos, axis = 0))
-
     input_position = np.array(input_position)
     hit_position = np.array(hit_position)
     difference = hit_position - input_position
