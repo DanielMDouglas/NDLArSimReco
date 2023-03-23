@@ -1,20 +1,29 @@
 trainfilePath:
-  - /sdf/group/neutrino/dougl215/singleParticle/batch1k_time_padding_3GeV/shifted/
+  - /sdf/home/d/dougl215/studies/fakedep/train/
 testfilePath:
-  - /sdf/group/neutrino/dougl215/singleParticle/mu_only_3GeV_test/shifted/
+  - /sdf/home/d/dougl215/studies/fakedep/test/
 
-outdir: /scratch/dougl215/larndsim_mu_only_PNN_testing
+outdir: /scratch/dougl215/larnd-sim-nd-spatialModel
 
-loss: NLL
-batchSize: 128
+loss: torchMSE
+# batchSize: 512
+batchSize: 1024
+
+lr: 1.e-10
 
 nEpochs: 10
 
 layers:
 
-- type: MLinear
+- type: Linear
+  out_feat: 32
+- type: Linear
+  out_feat: 64
+- type: Linear
   out_feat: 128
-- type: MLinear
-  out_feat: 128
-- type: MLinear
+- type: Linear
+  out_feat: 64
+- type: Linear
+  out_feat: 32
+- type: Linear
   out_feat: 3

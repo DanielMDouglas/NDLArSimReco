@@ -1,8 +1,8 @@
 import torch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-from NDLArSimReco.network import ConfigurableSparseNetwork
-from NDLArSimReco.dataLoader import SpatialDataLoader
+from NDLArSimReco.spatial.network import ConfigurableDenseNetwork
+from NDLArSimReco.spatial.dataLoader import DataLoader
 
 import yaml
 import os
@@ -12,7 +12,7 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=3, D=3, manifest = manifest).to(device)
+    net = ConfigurableDenseNetwork(in_feat=3, manifest = manifest).to(device)
 
     if args.checkpoint:
         try:

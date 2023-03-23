@@ -68,10 +68,6 @@ def main(args):
     hit_position = np.array(hit_position)
     difference = hit_position - input_position
 
-    pos_map_dtype = np.dtype([('edep', 'f4'),
-                              ('hits', 'f4'),
-                              ('diff', 'f4')])
-    
     with h5py.File(args.outfile, 'w') as of:
         of['edep'] = input_position
         of['hits'] = hit_position

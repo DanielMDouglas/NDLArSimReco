@@ -1,5 +1,4 @@
 import MinkowskiEngine as ME
-ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
 import torch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -15,7 +14,7 @@ from LarpixParser.geom_to_dict import larpix_layout_to_dict
 
 from NDeventDisplay.voxelize import voxelize
 
-from . import detector
+from NDLArSimReco import detector
 
 class DataLoader:
     """
@@ -31,9 +30,8 @@ class DataLoader:
         nImages = 0
         for fileName in self.fileList:
             f = h5py.File(fileName)
-            eventIDs = f['evinfo']['eventID']
             
-            nImages += len(np.unique(eventIDs))
+            nImages += len(f['hits'])
 
         self.batchesPerEpoch = int(nImages/self.batchSize)
         
@@ -50,9 +48,8 @@ class DataLoader:
         # file has been fully iterated through
         self.currentFileName = self.fileList[fileIndex]
         f = h5py.File(self.currentFileName)
-        self.hits = f['hits']
         self.edep = f['edep']
-        self.evinfo = f['evinfo']
+        self.hits = f['hits']
 
         self.setSampleLoadOrder()
         
@@ -61,37 +58,72 @@ class DataLoader:
         # are sampled
         # This should be redone after each file is loaded
         # self.loadOrder = np.arange(self.t0_grp.shape[0])
-        nImages = len(np.unique(self.evinfo['eventID']))
+        nImages = len(self.hits[:])
         self.sampleLoadOrder = np.random.choice(nImages,
                                                 size = nImages,
                                                 replace = False)
 
     def load(self):
         for fileIndex in self.fileLoadOrder:
+            print ("loading next file")
             self.loadNextFile(fileIndex)
             hits = []
             edep = []
             for evtIndex in self.sampleLoadOrder:
                 theseHits, theseEdep = self.load_event(evtIndex)
+                l2 = np.power(theseHits[0] - theseEdep[0], 2) + \
+                    np.power(theseHits[1] - theseEdep[1], 2) + \
+                    np.power(theseHits[2] - theseEdep[2], 2)
                 if len(theseHits) == 0:
                     continue
-                else:
+                elif l2 > 1.e2:
+                    continue
+                else: 
                     hits.append(theseHits)
                     edep.append(theseEdep)
 
                 if len(hits) == self.batchSize:
-                    yield array_to_sparseTensor(hits, edep)
+                    yield array_to_tensor(hits, edep)
                     hits = []
                     edep = []
             
     def load_event(self, event_id):
         # load a given event from the currently loaded file
 
-        hits_mask = self.hits['eventID'] == event_id
-        hits_ev = self.hits[hits_mask]
+        hits_ev = self.hits[event_id]
 
-        edep_mask = self.edep['eventID'] == event_id
-        edep_ev = self.edep[edep_mask]
+        edep_ev = self.edep[event_id]
         
         return hits_ev, edep_ev
 
+def array_to_tensor(hitList, edepList):
+    # ME.clear_global_coordinate_manager()
+
+    hitCoordTensors = []
+    
+    edepCoordTensors = []
+
+    for hits, edep in zip(hitList, edepList):
+        
+        # trackX, trackZ, trackY, dE = edep
+        edepX = edep[0]
+        edepY = edep[1]
+        edepZ = edep[2]
+        
+        edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
+                
+        edepCoordTensors.append(edepCoords)
+
+        # hitsX, hitsY, hitsZ, hitsQ = hits
+        hitsX = hits[0]
+        hitsY = hits[1]
+        hitsZ = hits[2]
+
+        hitCoords = torch.FloatTensor(np.array([hitsX, hitsY, hitsZ])).T
+            
+        hitCoordTensors.append(hitCoords)
+
+    hitCoordTensors = torch.stack(hitCoordTensors).to(device)
+    edepCoordTensors = torch.stack(edepCoordTensors).to(device)
+
+    return hitCoordTensors, edepCoordTensors
