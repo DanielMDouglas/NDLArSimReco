@@ -51,13 +51,13 @@ def NLLmoyal(output, truth):
     # mean = torch.relu(output.features[:,0]) + epsilon
     # sigma = torch.exp(output.features[:,1]) + epsilon
 
-    meanLL = 0
-    meanUL = 5
+    meanLL = 0.
+    meanUL = 5.
     meanDR = meanUL - meanLL
     mean = meanDR*torch.sigmoid(output.features[:,0]) + meanLL
 
     sigmaLL = 1.e-2
-    sigmaUL = meanUL
+    sigmaUL = 3.
     sigmaDR = sigmaUL - sigmaLL
     sigma = sigmaDR*torch.sigmoid(output.features[:, 1]) + sigmaLL
 
@@ -81,7 +81,12 @@ def NLLmoyal(output, truth):
     # print (torch.all(sigma > 0))
 
     print ("y range", torch.min(y).item(), torch.max(y).item()) 
-
+    print (y)
+    print (torch.exp(-y))
+    print (torch.any(torch.isinf(torch.exp(-y))))
+    print (torch.log(sigma))
+    print (torch.any(torch.isinf(torch.log(sigma))))
+    
     logp = -0.5*(y + torch.exp(-y)) - torch.log(sigma) - np.log(np.sqrt(2*np.pi))
 
     LL = torch.sum(logp)
@@ -102,7 +107,7 @@ def NLLeval(output, truth):
 def NLL_reluError(output, truth):
     diff = (output - truth).features[:,0]
     epsilon = 1.e-2
-    sigma = torch.relu(1.e-2*output.features[:,1]) + epsilon
+    sigma = torch.relu(output.features[:,1]) + epsilon
     
     logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
 

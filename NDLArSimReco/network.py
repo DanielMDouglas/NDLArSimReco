@@ -169,10 +169,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        optimizer = optim.SGD(self.parameters(), 
-                              lr = self.lr, 
-                              momentum = 0.9)
-        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
+        # optimizer = optim.SGD(self.parameters(), 
+        #                       lr = self.lr, 
+        #                       momentum = 0.9)
+        optimizer = optim.Adam(self.parameters(), 
+                              lr = self.lr)
+        # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
         self.train()
         
@@ -191,63 +193,72 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
         for i in tqdm.tqdm(range(nEpochs)):
             if i < self.n_epoch:
-                continue
+                print ("skipping epoch", i)
+            else:
 
-            dataLoader.setFileLoadOrder()
-            pbar = tqdm.tqdm(enumerate(dataLoader.load()),
-                             total = dataLoader.batchesPerEpoch)
-            for j, (hits, edep) in pbar:
-                if j < self.n_iter:
-                    continue
+                dataLoader.setFileLoadOrder()
+                pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+                                 total = dataLoader.batchesPerEpoch)
+                for j, (hits, edep) in pbar:
+                    if j < self.n_iter:
+                        continue
+                    else:
+                        optimizer.zero_grad()
 
-                optimizer.zero_grad()
+                        hits.features[:,0] /= 20.
 
-                if dropout:
-                    hits = nn.Dropout()(hits)
-                
-                if report:
-                    with profile(activities=[ProfilerActivity.CUDA],
-                                 profile_memory = True,
-                                 record_shapes = True) as prof:
-                        with record_function("model_inference"):
-                            output = self(hits)
+                        if report:
+                            with profile(activities=[ProfilerActivity.CUDA],
+                                         profile_memory = True,
+                                         record_shapes = True) as prof:
+                                with record_function("model_inference"):
+                                    output = self(hits)
 
-                    print(prof.key_averages().table(sort_by="self_cuda_time_total", 
-                                                    row_limit = 10))
+                            print(prof.key_averages().table(sort_by="self_cuda_time_total", 
+                                                            row_limit = 10))
                     
-                else:
-                    output = self.forward(hits)
+                        else:
+                            output = self.forward(hits)
 
-                loss = self.criterion(output, edep)
+                        # print ("hits", 
+                        #        torch.mean(hits.features[:,0]).item(),
+                        #        torch.min(hits.features[:,0]).item(),
+                        #        torch.max(hits.features[:,0]).item())
+                        # print ("edep", 
+                        #        torch.mean(edep.features[:,0]).item(),
+                        #        torch.min(edep.features[:,0]).item(),
+                        #        torch.max(edep.features[:,0]).item())
 
-                pbar.set_description("loss: "+str(round(loss.item(), 4)))
-                self.training_report(loss)
+                        loss = self.criterion(output, edep)
+
+                        pbar.set_description("loss: "+str(round(loss.item(), 4)))
+                        self.training_report(loss)
                 
-                loss.backward()
-                optimizer.step()
+                        loss.backward()
+                        optimizer.step()
         
-                self.n_iter += 1
+                        self.n_iter += 1
 
-                # save a checkpoint of the model every 10% of an epoch
-                remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
-                if remainder < prevRemainder:
-                    try:
-                        checkpointFile = os.path.join(self.outDir,
-                                                      'checkpoints',
-                                                      'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                        self.make_checkpoint(checkpointFile)
+                        # save a checkpoint of the model every 10% of an epoch
+                        remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
+                        if remainder < prevRemainder:
+                            try:
+                                checkpointFile = os.path.join(self.outDir,
+                                                              'checkpoints',
+                                                              'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
+                                self.make_checkpoint(checkpointFile)
 
-                        # self.training_report(loss)
+                                # self.training_report(loss)
 
-                        device.empty_cache()
-                    except AttributeError:
-                        pass
-                prevRemainder = remainder
+                                device.empty_cache()
+                            except AttributeError:
+                                pass
+                        prevRemainder = remainder
             
-            self.n_epoch += 1
-            self.n_iter = 0
+                self.n_epoch += 1
+                self.n_iter = 0
 
-            scheduler.step()
+            # scheduler.step()
 
         print ("final loss:", loss.item())        
 
@@ -280,10 +291,13 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         dataLoader.setFileLoadOrder()
 
         lossList = []
-        for i, (larpix, edep) in tqdm.tqdm(enumerate(dataLoader.load()),
-                                           total = evalBatches):
+        pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+                         total = evalBatches)
+        for i, (larpix, edep) in pbar:
             if i >= evalBatches:
                 break # we're done here
+
+            larpix.features[:,0] /= 20.
 
             if report:
                 with profile(activities=[ProfilerActivity.CUDA],
@@ -299,6 +313,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 prediction = self(larpix)
 
             loss = self.criterion(prediction, edep)
+
+            pbar.set_description("loss: "+str(round(loss.item(), 4)))
+
             # print ("loss", loss.item())
             
             lossList.append(loss.item())

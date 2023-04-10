@@ -74,6 +74,7 @@ def main(args):
     print ("using found checkpoints", theseCheckpoints)
 
     infilePath = manifest['testfilePath'] 
+    # infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
                       for thisFile in os.listdir(infilePath[0])]

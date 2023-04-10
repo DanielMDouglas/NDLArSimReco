@@ -31,10 +31,14 @@ class DataLoader:
 
         nImages = 0
         for fileName in self.fileList:
-            f = h5py.File(fileName)
-            eventIDs = f['evinfo']['eventID']
+            try:
+                f = h5py.File(fileName)
+                eventIDs = f['evinfo']['eventID']
             
-            nImages += len(np.unique(eventIDs))
+                nImages += len(np.unique(eventIDs))
+            except OSError:
+                print ("Skipping bad file", fileName)
+                self.fileList.remove(fileName)
 
         self.batchesPerEpoch = int(nImages/self.batchSize)
         
@@ -201,7 +205,8 @@ class RawDataLoader:
         pckt_mask = (self.packets['timestamp'] > ti) & (self.packets['timestamp'] < tf)
         packets_ev = self.packets[pckt_mask]
 
-        t0_correction = -20
+        t0_correction = -38
+        # print ("using t0 correction of", t0_correction)
 
         hitX, hitY, hitZ, dQ = HitParser.hit_parser_charge(t0 + t0_correction,
                                                            packets_ev,
