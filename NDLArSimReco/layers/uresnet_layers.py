@@ -389,7 +389,7 @@ class UResNet(torch.nn.Module):
         return out
 
 class UResNet_dropout(torch.nn.Module):
-    def __init__(self, in_features, out_features, depth = 2, nFilters = 16, name='uresnet_dropout'):
+    def __init__(self, in_features, out_features, depth = 2, nFilters = 16, dropout_depth = 2, name='uresnet_dropout'):
         super(UResNet_dropout, self).__init__()
 
         self.depth = depth # number of pool/unpool layers, not including input + output
@@ -428,13 +428,23 @@ class UResNet_dropout(torch.nn.Module):
                     stride = 2,
                     dimension = 3)
             )
-            self.encoding_blocks.append(
-                nn.Sequential(
-                    ME.MinkowskiDropout(),
+            print ("current depth", self.depth, self.depth - i)
+            if i >= dropout_depth:
+                print ("including dropout")
+                self.encoding_blocks.append(
+                    nn.Sequential(
+                        ME.MinkowskiDropout(),
+                        ResNetBlock(self.featureSizesEnc[i][1],
+                                    self.featureSizesEnc[i][1]),
+                    )
+                )
+            else:
+                print ("excluding dropout")
+                self.encoding_blocks.append(
                     ResNetBlock(self.featureSizesEnc[i][1],
                                 self.featureSizesEnc[i][1]),
                 )
-            )
+
         self.encoding_layers = nn.Sequential(*self.encoding_layers)
         self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
@@ -447,13 +457,19 @@ class UResNet_dropout(torch.nn.Module):
                     stride = 2,
                     dimension = 3)
             )
-            self.decoding_blocks.append(
-                nn.Sequential(
+            if (self.depth - i) > dropout_depth:
+                self.decoding_blocks.append(
+                    nn.Sequential(
+                        ResNetBlock(2*self.featureSizesDec[i][1],
+                                    self.featureSizesDec[i][1]),
+                        ME.MinkowskiDropout(),
+                    )
+                )
+            else:
+                self.decoding_blocks.append(
                     ResNetBlock(2*self.featureSizesDec[i][1],
                                 self.featureSizesDec[i][1]),
-                    ME.MinkowskiDropout(),
                 )
-            )
         self.decoding_layers = nn.Sequential(*self.decoding_layers)
         self.decoding_blocks = nn.Sequential(*self.decoding_blocks)
 
