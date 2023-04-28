@@ -100,7 +100,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 layer_out_feat = int(layer['out_feat'])
                 self.layers.append(uresnet_layers.UResNet_dropout(layer_in_feat,
                                                                   layer_out_feat,
-                                                                  int(layer['depth'])))
+                                                                  depth = int(layer['depth']),
+                                                                  dropout_depth = int(layer['dropout_depth'])))
                 layer_in_feat = layer_out_feat
             elif layer['type'] == 'UNet':
                 layer_out_feat = int(layer['out_feat'])
@@ -183,13 +184,21 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         report = False
         prevRemainder = 0
 
-        # if there's a previous checkpoint, start there
-        if 'checkpoints' in self.manifest and self.manifest['checkpoints'] != []:
-            latestCheckpoint = self.manifest['checkpoints'][-1]
-            self.load_checkpoint(latestCheckpoint)
-            self.n_epoch = int(latestCheckpoint.split('_')[-2])
-            self.n_iter = int(latestCheckpoint.split('_')[-1].split('.')[0])
-            print ("resuming training at epoch {}, iteration {}".format(self.n_epoch, self.n_iter))
+        # if there's a previous epochal checkpoint, start there
+        if 'checkpoints' in self.manifest:
+            epochalCheckpoints = [thisCheckpoint for thisCheckpoint in self.manifest['checkpoints']
+                                  if thisCheckpoint.split('_')[-1].split('.')[0] == '1']
+            
+            if any(epochalCheckpoints):
+                latestEpochalCheckpoint = epochalCheckpoints[-1]
+                
+                self.load_checkpoint(latestEpochalCheckpoint)
+                self.n_epoch = int(latestEpochalCheckpoint.split('_')[-2])
+                self.n_iter = int(latestEpochalCheckpoint.split('_')[-1].split('.')[0])
+
+                self.rewind_report()
+
+                print ("resuming training at epoch {}, iteration {}".format(self.n_epoch, self.n_iter))
 
         for i in tqdm.tqdm(range(nEpochs)):
             if i < self.n_epoch:
@@ -230,8 +239,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         #        torch.max(edep.features[:,0]).item())
 
                         loss = self.criterion(output, edep)
-
-                        pbar.set_description("loss: "+str(round(loss.item(), 4)))
+ 
+                        pbarMessage = " ".join(["epoch:",
+                                               str(self.n_epoch),
+                                               "loss:",
+                                               str(round(loss.item(), 4))])
+                        pbar.set_description(pbarMessage)
                         self.training_report(loss)
                 
                         loss.backward()
@@ -271,6 +284,20 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             rf.write('{} \t {} \t {} \n'.format(self.n_epoch, 
                                                 self.n_iter, 
                                                 loss))
+
+    def rewind_report(self):
+        """
+        Load the existing report and remove every entry after the current n_epoch, n_iter
+        """
+
+        with open(self.reportFile, 'r') as rf:
+            linesData = rf.readlines()
+
+        goodLines = [line for line in linesData
+                     if int(line.split('\t')[0]) < self.n_epoch]
+
+        with open(self.reportFile, 'w') as rf:
+            rf.writelines(goodLines)
         
     def evalLoop(self, dataLoader, nBatches = 50, evalMode = True):
         """
