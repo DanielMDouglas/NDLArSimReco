@@ -3,6 +3,16 @@ import torch.nn as nn
 
 import numpy as np
 
+# class MSE_stock:
+#     def __init__(self):
+#         pass
+#     def feature_map(self, *features):
+
+#     def loss(self, *mappedFeatures):
+        
+#     def __call__(self, output, truth):
+#         # diff = self.feature_map(
+
 def MSE_stock(output, truth):
     diff = (output - truth).features
     return nn.MSELoss()(diff, torch.zeros_like(diff))

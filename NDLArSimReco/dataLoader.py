@@ -93,12 +93,12 @@ class DataLoader:
         # load a given event from the currently loaded file
 
         hits_mask = self.hits['eventID'] == event_id
-        hits_ev = self.hits[hits_mask]
+        self.hits_ev = self.hits[hits_mask]
 
         edep_mask = self.edep['eventID'] == event_id
-        edep_ev = self.edep[edep_mask]
-        
-        return hits_ev, edep_ev
+        self.edep_ev = self.edep[edep_mask]
+
+        return self.hits_ev, self.edep_ev
 
 class RawDataLoader:
     """
@@ -204,6 +204,17 @@ class RawDataLoader:
         
         pckt_mask = (self.packets['timestamp'] > ti) & (self.packets['timestamp'] < tf)
         packets_ev = self.packets[pckt_mask]
+        trackAssn_ev = self.assn[pckt_mask] 
+        trackIDs_ev = trackAssn_ev['track_ids']
+        trackFractions_ev = trackAssn_ev['fraction']
+        # print (trackIDs_ev, trackFractions_ev)
+        # print (trackIDs_ev.shape, trackFractions_ev.shape)
+        # print (trackFractions_ev == np.max(trackFractions_ev, axis = -1))
+        
+        strongestTrack = trackIDs_ev[trackFractions_ev == np.max(trackFractions_ev, axis = -1)]
+        # print (event_id, trackIDs_ev)
+        # print (strongestTrack)
+        # tracks_ev = self.tracks[trackIDs_ev]
 
         t0_correction = -38
         # print ("using t0 correction of", t0_correction)
