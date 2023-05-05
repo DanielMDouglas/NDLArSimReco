@@ -11,7 +11,10 @@ import numpy as np
 #     def loss(self, *mappedFeatures):
         
 #     def __call__(self, output, truth):
-#         # diff = self.feature_map(
+#         return self.loss(self.feature_map
+        
+#         diff = (output - truth).features
+#         return nn.MSELoss()(diff, torch.zeros_like(diff))
 
 def MSE_stock(output, truth):
     diff = (output - truth).features

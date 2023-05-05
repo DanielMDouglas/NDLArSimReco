@@ -195,7 +195,7 @@ class RawDataLoader:
                     hits = []
                     tracks = []
             
-    def load_event(self, event_id):
+    def load_event(self, event_id, get_true_tracks = False):
         # load a given event from the currently loaded file
         t0 = self.t0_grp[event_id][0]
         # print("--------event_id: ", event_id)
@@ -207,13 +207,28 @@ class RawDataLoader:
         trackAssn_ev = self.assn[pckt_mask] 
         trackIDs_ev = trackAssn_ev['track_ids']
         trackFractions_ev = trackAssn_ev['fraction']
-        # print (trackIDs_ev, trackFractions_ev)
-        # print (trackIDs_ev.shape, trackFractions_ev.shape)
-        # print (trackFractions_ev == np.max(trackFractions_ev, axis = -1))
-        
-        strongestTrack = trackIDs_ev[trackFractions_ev == np.max(trackFractions_ev, axis = -1)]
+        # print (trackIDs_ev, trackFractions_ev) 
+        # print (packets_ev.shape, trackIDs_ev.shape, trackFractions_ev.shape)
+
+        strongestTrack = np.empty((packets_ev.shape), dtype = self.tracks.dtype)
+        assn = []
+        # print ([thisTrackID for thisTrackID, thisTrackFraction in zip(trackIDs_ev, trackFractions_ev) if
+        for i, (packetTID, packetFraction) in enumerate(zip(trackIDs_ev, trackFractions_ev)):
+            maxInd = list(packetFraction).index(max(packetFraction))
+            trackInd = packetTID[maxInd]
+            strongestTrack[i] = self.tracks[trackInd]
+
+            
+            # assn.append((hitInd, trackInd))
+            
+        # it should be similar to how I do it for the other thing
+        # an array with a row for each hit
+        # and an entry with the track index
+            
+        # strongestTrack = trackIDs_ev[trackFractions_ev == np.max(trackFractions_ev, axis = -1)]
         # print (event_id, trackIDs_ev)
         # print (strongestTrack)
+        # print (len(strongestTrack), len(packets_ev))
         # tracks_ev = self.tracks[trackIDs_ev]
 
         t0_correction = -38
@@ -224,6 +239,7 @@ class RawDataLoader:
                                                            self.geom_dict,
                                                            self.run_config,
                                                            drift_model = 2)
+        hits_ev = np.array([hitX, hitY, hitZ, dQ])
         
         vox_ev_id = np.unique(EvtParser.packet_to_eventid(self.assn,
                                                           self.tracks)[pckt_mask])
@@ -256,8 +272,12 @@ class RawDataLoader:
                   vox_ev['yBin']/self.pixelPitch,
                   vox_ev['zBin']/self.pixelPitch,
                   vox_ev['dE'])
-        
-        return hits, voxels
+
+        if get_true_tracks:
+            tracks = None
+            return hits, voxels, strongestTrack, hits_ev
+        else:
+            return hits, voxels
 
 def array_to_sparseTensor(hitList, edepList):
     ME.clear_global_coordinate_manager()
