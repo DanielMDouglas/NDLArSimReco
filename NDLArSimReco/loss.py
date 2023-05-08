@@ -3,130 +3,106 @@ import torch.nn as nn
 
 import numpy as np
 
-# class MSE_stock:
-#     def __init__(self):
-#         pass
-#     def feature_map(self, *features):
+class loss:
+    def __init__(self):
+        pass
+    def feature_map(self, outputSparseTensor):
+        """
+        Each subclass implements a function which takes
+        the network output sparse tensor and returns a
+        tuple of features mapped to their physical meaning.
+        If not specified, just pass the 0th feature
+        """
+        feature = outputSparseTensor.features[:,0]
+        return feature,
+    def loss(self, truth, *mappedFeatures):
+        """
+        Each subclass implements a loss function which
+        accepts the G.T. (sparseTensor), mapped feature tensors
+        (as a tuple), and returns a rank-0 tensor
+        representing the loss value
+        """
+        return 0
+    def __call__(self, output, truth):
+        """
+        Compose the loss function with the feature map
+        """
+        truthTensor = truth.features[:,0]
+        return self.loss(truth, *self.feature_map(output))
 
-#     def loss(self, *mappedFeatures):
+class MSE_stock (loss): 
+    def loss(self, truth, pred):
+        diff = (pred - truth)
+        return nn.MSELoss()(diff, torch.zeros_like(diff))
+
+class MSE (loss):
+    def loss(self, truth, pred):
+        diff = (pred - truth)
+
+        se = torch.pow(diff, 2)
+        mse = torch.sum(se)/len(diff)
+
+        return mse
+
+class NLL_homog (loss):
+    def loss(self, truth, mean):
+        sigma = torch.ones_like(mean)
+
+        diff = (mean - truth)
+    
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma)
+        # divide by number of points (to help smoothness batch to batch)
+        LL = torch.sum(logp)/len(diff) 
         
-#     def __call__(self, output, truth):
-#         return self.loss(self.feature_map
+        return -LL
+    
+class NLL (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        epsilon = 1.e-2
+        sigma = torch.exp(outputSparseTensor.features[:,1]) + epsilon
+
+        return mean, sigma
+    def loss(self, truth, mean, sigma):    
+        diff = (mean - truth)
         
-#         diff = (output - truth).features
-#         return nn.MSELoss()(diff, torch.zeros_like(diff))
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
 
-def MSE_stock(output, truth):
-    diff = (output - truth).features
-    return nn.MSELoss()(diff, torch.zeros_like(diff))
+        LL = torch.sum(logp)/len(diff)
+        
+        return -LL
 
-def MSE(output, truth):
-    # this version only considers the 0th feature
-    diff = (output - truth).features[:, 0]
-    
-    se = torch.pow(diff, 2)
-    mse = torch.sum(se)/len(diff)
+class NLL_reluError (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
 
-    return mse
+        epsilon = 1.e-2
+        sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
 
-def NLL_homog(output, truth):
+        return mean, sigma
+    def loss(self, truth, mean, sigma):    
+        diff = (mean - truth)
+        
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
 
-    diff = (output - truth).features[:, 0]
-    sigma = torch.ones_like(diff)
-    
-    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma)
-    # divide by number of points (to help smoothness batch to batch)
-    LL = torch.sum(logp)/len(diff) 
+        LL = torch.sum(logp)/len(diff)
+        
+        return -LL
 
-    return -LL
+class NLL_moyal (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
 
-def NLL(output, truth):
-    diff = (output - truth).features[:,0]
-    epsilon = 1.e-2
-    sigma = torch.exp(output.features[:,1]) + epsilon
-    
-    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+        epsilon = 1.e-2
+        sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
 
-    LL = torch.sum(logp)/len(diff)
+        return mean, sigma
+    def loss(self, truth, mean, sigma):    
+        y = (mean - truth)/sigma
+        
+        logp = -0.5*(y + torch.exp(-y)) - torch.log(sigma) - np.log(np.sqrt(2*np.pi))
 
-    return -LL
+        LL = torch.sum(logp)
 
-def moyal_standardized(x):
-    return torch.exp(-(x + torch.exp(-x))/2)/np.sqrt(2*np.pi)
-
-def moyalPDF(x, loc, scale):
-    y = (x - loc)/scale
-    return moyal_standardized(y)/scale
-
-def NLLmoyal(output, truth):
-    # epsilon = 1.e-2
-    # # mean = torch.log(output.features[:,0]) + epsilon
-    # mean = torch.relu(output.features[:,0]) + epsilon
-    # sigma = torch.exp(output.features[:,1]) + epsilon
-
-    meanLL = 0.
-    meanUL = 5.
-    meanDR = meanUL - meanLL
-    mean = meanDR*torch.sigmoid(output.features[:,0]) + meanLL
-
-    sigmaLL = 1.e-2
-    sigmaUL = 3.
-    sigmaDR = sigmaUL - sigmaLL
-    sigma = sigmaDR*torch.sigmoid(output.features[:, 1]) + sigmaLL
-
-    obs = truth.features[:,0]
-    
-    y = (obs - mean)/sigma
-
-    print (truth.shape)
-    print ("obs range", torch.min(obs).item(), torch.max(obs).item())
-
-    # print (mean)
-    print (torch.mean(output.features[:,0]).item())
-    print ("mean range", torch.min(mean).item(), torch.max(mean).item())
-    # print (torch.any(torch.isnan(mean)))
-    # print (torch.all(mean > 0))
-
-    # print (sigma)
-    print (torch.mean(output.features[:,1]).item())
-    print ("sigma range", torch.min(sigma).item(), torch.max(sigma).item())
-    # print (torch.any(torch.isnan(sigma)))
-    # print (torch.all(sigma > 0))
-
-    print ("y range", torch.min(y).item(), torch.max(y).item()) 
-    print (y)
-    print (torch.exp(-y))
-    print (torch.any(torch.isinf(torch.exp(-y))))
-    print (torch.log(sigma))
-    print (torch.any(torch.isinf(torch.log(sigma))))
-    
-    logp = -0.5*(y + torch.exp(-y)) - torch.log(sigma) - np.log(np.sqrt(2*np.pi))
-
-    LL = torch.sum(logp)
-
-    return -LL
-
-def NLLeval(output, truth):
-    diff = torch.relu((output - truth).features[:,0])
-    epsilon = 1.e-2
-    sigma = torch.exp(output.features[:,1]) + epsilon
-    
-    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) + np.log(np.sqrt(2*np.pi))
-
-    LL = torch.sum(logp)/len(diff)
-
-    return -LL
-
-def NLL_reluError(output, truth):
-    diff = (output - truth).features[:,0]
-    epsilon = 1.e-2
-    sigma = torch.relu(output.features[:,1]) + epsilon
-    
-    logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
-
-    LL = torch.sum(logp)/len(diff)
-
-    return -LL
-
-def NLLr(output, truth):
-    return NLL(output, truth)-NLL(output, output)
+        return -LL

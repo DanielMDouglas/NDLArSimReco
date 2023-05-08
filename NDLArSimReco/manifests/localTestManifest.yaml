@@ -1,7 +1,7 @@
 trainfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda_pared.h5
+  - /home/dan/studies/NDLArSimReco/test/mu_only_100MeV-500MeV/pared/pared_single_particle_f85029f3-3556-4d0d-a7d5-5031d20ab057.h5
 testfilePath:
-  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/edep_single_particle_larndsim_08364217-5952-4e55-814d-174ca6611bda_pared.h5
+  - /home/dan/studies/NDLArSimReco/test/mu_only_100MeV-500MeV/pared/pared_single_particle_f85029f3-3556-4d0d-a7d5-5031d20ab057.h5
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
@@ -26,3 +26,4 @@ layers:
   kernel_size: 7
   stride: 1
   out_feat: 1
+ 

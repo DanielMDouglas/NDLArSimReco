@@ -51,7 +51,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         else:
             self.lr = 1.e-4
 
-        self.criterion = lossDict[self.manifest['loss']] 
+        self.criterion = lossDict[self.manifest['loss']]()
 
         # load layer structure from the manifest
         self.layers = []
