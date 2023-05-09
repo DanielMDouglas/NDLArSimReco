@@ -77,7 +77,7 @@ class NLL_reluError (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]
 
-        epsilon = 1.e-2
+        epsilon = 1.e-2 
         sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
 
         return mean, sigma

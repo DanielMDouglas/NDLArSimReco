@@ -294,6 +294,9 @@ def array_to_sparseTensor(hitList, edepList):
     EdepPadCoordTensors = []
     EdepPadFeatureTensors = []
 
+    # GenericPadCoordTensors = []
+    # GenericPadFeatureTensors = []
+    
     for hits, edep in zip(hitList, edepList):
         
         # trackX, trackZ, trackY, dE = edep
@@ -332,7 +335,12 @@ def array_to_sparseTensor(hitList, edepList):
         EdepPadCoordTensors.append(EdepPadCoords)
         EdepPadFeatureTensors.append(EdepPadFeature)
 
-            
+        # GenericPadCoords = hitCoords # add to this list everything +/- 1 in each dimension
+        # GenericPadFeature = torch.zeros((GenericPadCoords.shape[0], 1))
+
+        # GenericPadCoordTensors.append(GenericPadCoords)
+        # GenericPadFeatureTensors.apend(GenericPadFeature)
+        
     hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
                                                     hitFeatureTensors,
                                                     dtype = torch.int32)
@@ -348,6 +356,10 @@ def array_to_sparseTensor(hitList, edepList):
     EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
                                                             EdepPadFeatureTensors,
                                                             dtype = torch.int32)
+
+    # GenericPadCoords, GenericPadFeature = ME.utils.sparse_collate(GenericPadCoordTensors,
+    #                                                               GenericPadFeatureTensors,
+    #                                                               dtype = torch.int32)
                 
     larpix = ME.SparseTensor(features = hitFeature.to(device),
                              coordinates = hitCoords.to(device))
@@ -360,15 +372,15 @@ def array_to_sparseTensor(hitList, edepList):
                                 coordinate_manager = larpix.coordinate_manager,
                                 )
     EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
-                              coordinate_map_key = larpix.coordinate_map_key,
+                              coordinate_map_key =  larpix.coordinate_map_key,
                               coordinate_manager = larpix.coordinate_manager,
                               )
 
-    # print (larpix.shape, edep.shape, LarpixPad.shape)
-    # print ("larpix center", torch.mean(larpix.coordinates.float(), dim = 0))
-    # print ("edep center", torch.mean(edep.coordinates.float(), dim = 0))
-    larpix = larpix + LarpixPad
-    edep = edep + EdepPad
-    # print (larpix.shape, edep.shape)
+    # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
+    #                              coordinate_map_key = larpix.coordinate_map_key,
+    #                              coordinate_manager = larpix.coordinate_manager)
+
+    larpix = larpix + LarpixPad # + GenericPad
+    edep = edep + EdepPad # + GenericPad
     
     return larpix, edep

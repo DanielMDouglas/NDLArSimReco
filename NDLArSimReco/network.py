@@ -23,7 +23,7 @@ from . import loss
 from .layers import uresnet_layers
 
 lossDict = {'NLL': loss.NLL,
-            'NLLmoyal': loss.NLLmoyal,
+            'NLL_moyal': loss.NLL_moyal,
             'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
@@ -34,7 +34,13 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
         # save the manifest dict internally
-        self.manifest = manifest
+        if type(manifest) == dict:
+            self.manifest = manifest
+        elif type(manifest) == str:
+            with open(manifest) as mf:
+                self.manifest = yaml.load(mf, Loader = yaml.FullLoader)
+
+        assert type(self.manifest) == dict
 
         # make the output data structure
         if make_output:
@@ -165,6 +171,17 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # update the local copy of the manifest
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
             yaml.dump(self.manifest, mf)
+
+    def MCdropout(self):
+        def activate_dropout_children(network):
+            for child in network.children():
+                if type(child) == ME.MinkowskiDropout:
+                    child.train()
+                else:
+                    activate_dropout_children(child)
+
+        self.eval()
+        activate_dropout_children(self)
             
     def trainLoop(self, dataLoader, dropout = False):
         """
