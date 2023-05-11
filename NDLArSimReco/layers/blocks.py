@@ -8,6 +8,16 @@ class Identity(nn.Module):
     def forward(self, input):
         return input
 
+class Scaling(nn.Module):
+    def __init__(self, scalingFactor):
+        super(Scaling, self).__init__()
+
+        self.scalar = scalingFactor
+
+    def forward(self, input):
+        input.features[:] *= self.scalar
+        return input
+
 class ResNetBlock(torch.nn.Module):
     def __init__(self, in_features, out_features, name = 'resBlock'):
         super(ResNetBlock, self).__init__()

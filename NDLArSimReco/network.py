@@ -21,6 +21,7 @@ import os
 
 from . import loss
 from .layers import uresnet_layers
+from .layers import blocks
 
 lossDict = {'NLL': loss.NLL,
             'NLL_moyal': loss.NLL_moyal,
@@ -121,7 +122,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                                layer_out_feat,
                                                                int(layer['depth'])))
                 layer_in_feat = layer_out_feat
-
+            elif layer['type'] == 'Scaling':
+                self.layers.append(blocks.Scaling(float(layer['scalingFactor'])))
+                
         self.network = nn.Sequential(*self.layers)
             
     def forward(self, x):
