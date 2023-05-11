@@ -8,7 +8,7 @@ outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 batchSize: 10
 loss: MSE
 
-nEpochs: 1
+nEpochs: 2
 
 layers:
 
@@ -25,5 +25,5 @@ layers:
 - type: MConvolution
   kernel_size: 7
   stride: 1
-  out_feat: 1
+  out_feat: 2
  

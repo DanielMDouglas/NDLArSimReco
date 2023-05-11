@@ -28,7 +28,7 @@ class loss:
         Compose the loss function with the feature map
         """
         truthTensor = truth.features[:,0]
-        return self.loss(truth, *self.feature_map(output))
+        return self.loss(truthTensor, *self.feature_map(output))
 
 class MSE_stock (loss): 
     def loss(self, truth, pred):
@@ -83,7 +83,6 @@ class NLL_reluError (loss):
         return mean, sigma
     def loss(self, truth, mean, sigma):    
         diff = (mean - truth)
-        
         logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
 
         LL = torch.sum(logp)/len(diff)
@@ -95,14 +94,16 @@ class NLL_moyal (loss):
         mean = outputSparseTensor.features[:,0]
 
         epsilon = 1.e-2
-        sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
+        # the two instances of epsilon here mean that epsilon can be adjusted during training
+        # a predicted value above the previous epsilon will not change
+        sigma = torch.relu(outputSparseTensor.features[:,1] - epsilon) + epsilon
 
         return mean, sigma
-    def loss(self, truth, mean, sigma):    
-        y = (mean - truth)/sigma
-        
-        logp = -0.5*(y + torch.exp(-y)) - torch.log(sigma) - np.log(np.sqrt(2*np.pi))
+    def loss(self, truth, mean, sigma):
+        y = (truth - mean)/sigma
 
-        LL = torch.sum(logp)
+        logp  = -1.*(y + torch.exp(-1.*y))/2 - np.log(2*np.pi)/2 - torch.log(sigma)
+        
+        LL = torch.sum(logp)/len(y)
 
         return -LL
