@@ -28,7 +28,7 @@ lossDict = {'NLL': loss.NLL,
             'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
-}
+            }
 
 def loadManifestDict(manifest):
     """
@@ -44,6 +44,82 @@ def loadManifestDict(manifest):
 
     return manifestDict
 
+def init_layers(layerDictList, in_feat, D):
+    layer_in_feat = in_feat
+
+    for layerDict in layerDictList:
+
+        if layerDict['type'] == 'MConvolution':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = ME.MinkowskiConvolution(
+                in_channels = layer_in_feat,
+                out_channels = layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
+                stride = int(layerDict['stride']),
+                bias = False,
+                dimension = D,
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'MReLU':
+            layer = ME.MinkowskiReLU()
+        elif layerDict['type'] == 'MBatchNorm':
+            layer_out_feat = layer_in_feat
+            layer = ME.MinkowskiBatchNorm(layer_out_feat)
+        elif layerDict['type'] == 'MMaxPooling':
+            layer = ME.MinkowskiMaxPooling(
+                kernel_size = int(layerDict['kernel_size']),
+                stride = int(layerDict['stride']),
+                dimension = D,
+            )
+        elif layerDict['type'] == 'MLinear':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = ME.MinkowskiLinear(
+                layer_in_feat,
+                layer_out_feat,
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'MDropout':
+            layer = ME.MinkowskiDropout()
+        elif layerDict['type'] == 'MGlobalPooling':
+            layer = ME.MinkowskiGlobalPooling()
+        elif layerDict['type'] == 'UResNet':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.UResNet(
+                layer_in_feat,
+                layer_out_feat,
+                int(layerDict['depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'UResNetDropout':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.UResNet_dropout(
+                layer_in_feat,
+                layer_out_feat,
+                depth = int(layerDict['depth']),
+                dropout_depth = int(layerDict['dropout_depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'UNet':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.UNet(
+                layer_in_feat,
+                layer_out_feat,
+                int(layerDict['depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'UNetDropout':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.UNet_dropout(
+                layer_in_feat,
+                layer_out_feat,
+                int(layerDict['depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'Scaling':
+            layer = blocks.Scaling(float(layerDict['scalingFactor']))
+
+        yield layer
+        
 
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, D, manifest, make_output = True):
@@ -70,68 +146,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
         # load layer structure from the manifest
         self.layers = []
-        layer_in_feat = in_feat
-        for layer in self.manifest['layers']:
-            if layer['type'] == 'MConvolution':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(ME.MinkowskiConvolution(
-                    in_channels = layer_in_feat,
-                    out_channels = layer_out_feat,
-                    kernel_size = int(layer['kernel_size']),
-                    stride = int(layer['stride']),
-                    bias = False,
-                    dimension = D
-                ))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'MReLU':
-                self.layers.append(ME.MinkowskiReLU())
-            elif layer['type'] == 'MBatchNorm':
-                layer_out_feat = layer_in_feat
-                self.layers.append(ME.MinkowskiBatchNorm(layer_out_feat))
-            elif layer['type'] == 'MMaxPooling':
-                self.layers.append(ME.MinkowskiMaxPooling(
-                    kernel_size = int(layer['kernel_size']),
-                    stride = int(layer['stride']),
-                    dimension = D
-                ))
-            elif layer['type'] == 'MLinear':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(ME.MinkowskiLinear(
-                    layer_in_feat,
-                    layer_out_feat
-                ))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'MDropout':
-                self.layers.append(ME.MinkowskiDropout())
-            elif layer['type'] == 'MGlobalPooling':
-                self.layers.append(ME.MinkowskiGlobalPooling())
-            elif layer['type'] == 'UResNet':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.UResNet(layer_in_feat,
-                                                          layer_out_feat,
-                                                          int(layer['depth'])))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'UResNetDropout':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.UResNet_dropout(layer_in_feat,
-                                                                  layer_out_feat,
-                                                                  depth = int(layer['depth']),
-                                                                  dropout_depth = int(layer['dropout_depth'])))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'UNet':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.UNet(layer_in_feat,
-                                                       layer_out_feat,
-                                                       int(layer['depth'])))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'UNetDropout':
-                layer_out_feat = int(layer['out_feat'])
-                self.layers.append(uresnet_layers.UNet_dropout(layer_in_feat,
-                                                               layer_out_feat,
-                                                               int(layer['depth'])))
-                layer_in_feat = layer_out_feat
-            elif layer['type'] == 'Scaling':
-                self.layers.append(blocks.Scaling(float(layer['scalingFactor'])))
+        for layer in init_layers(self.manifest['layers'], in_feat, D):
+            self.layers.append(layer)
                 
         self.network = nn.Sequential(*self.layers)
             
