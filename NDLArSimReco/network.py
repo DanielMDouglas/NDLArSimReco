@@ -30,18 +30,26 @@ lossDict = {'NLL': loss.NLL,
             'NLLhomog': loss.NLL_homog,
 }
 
+def loadManifestDict(manifest):
+    """
+    Load the manifest diction from a dictionary or a yaml path
+    """
+    if type(manifest) == dict:
+        manifestDict = manifest
+    elif type(manifest) == str:
+        with open(manifest) as mf:
+            manifestDict = yaml.load(mf, Loader = yaml.FullLoader)
+            
+    assert type(manifestDict) == dict
+
+    return manifestDict
+
+
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, D, manifest, make_output = True):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
-        # save the manifest dict internally
-        if type(manifest) == dict:
-            self.manifest = manifest
-        elif type(manifest) == str:
-            with open(manifest) as mf:
-                self.manifest = yaml.load(mf, Loader = yaml.FullLoader)
-
-        assert type(self.manifest) == dict
+        self.manifest = loadManifestDict(manifest)
 
         # make the output data structure
         if make_output:
