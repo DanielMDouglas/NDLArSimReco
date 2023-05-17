@@ -22,6 +22,7 @@ import os
 from . import loss
 from .layers import uresnet_layers
 from .layers import blocks
+from .trainLogging import *
 
 lossDict = {'NLL': loss.NLL,
             'NLL_moyal': loss.NLL_moyal,
@@ -29,20 +30,6 @@ lossDict = {'NLL': loss.NLL,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
             }
-
-def loadManifestDict(manifest):
-    """
-    Load the manifest diction from a dictionary or a yaml path
-    """
-    if type(manifest) == dict:
-        manifestDict = manifest
-    elif type(manifest) == str:
-        with open(manifest) as mf:
-            manifestDict = yaml.load(mf, Loader = yaml.FullLoader)
-            
-    assert type(manifestDict) == dict
-
-    return manifestDict
 
 def init_layers(layerDictList, in_feat, D):
     layer_in_feat = in_feat
@@ -120,7 +107,6 @@ def init_layers(layerDictList, in_feat, D):
 
         yield layer
         
-
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def __init__(self, in_feat, D, manifest, make_output = True):
         super(ConfigurableSparseNetwork, self).__init__(D)
@@ -133,6 +119,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.reportFile = os.path.join(self.manifest['outdir'],
                                            'train_report.dat')
             self.make_output_tree()
+
+            self.log_manager = LogManager(self)
 
         self.n_epoch = 0
         self.n_iter = 0
@@ -228,22 +216,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         report = False
         prevRemainder = 0
 
-        # if there's a previous epochal checkpoint, start there
-        if 'checkpoints' in self.manifest:
-            epochalCheckpoints = [thisCheckpoint for thisCheckpoint in self.manifest['checkpoints']
-                                  if thisCheckpoint.split('_')[-1].split('.')[0] == '1']
-            
-            if any(epochalCheckpoints):
-                latestEpochalCheckpoint = epochalCheckpoints[-1]
-                
-                self.load_checkpoint(latestEpochalCheckpoint)
-                self.n_epoch = int(latestEpochalCheckpoint.split('_')[-2])
-                self.n_iter = int(latestEpochalCheckpoint.split('_')[-1].split('.')[0])
-
-                self.rewind_report()
-
-                print ("resuming training at epoch {}, iteration {}".format(self.n_epoch, self.n_iter))
-
         for i in tqdm.tqdm(range(nEpochs)):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
@@ -300,10 +272,11 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
                         if remainder < prevRemainder:
                             try:
-                                checkpointFile = os.path.join(self.outDir,
-                                                              'checkpoints',
-                                                              'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                                self.make_checkpoint(checkpointFile)
+                                # checkpointFile = os.path.join(self.outDir,
+                                #                               'checkpoints',
+                                #                               'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
+                                # self.make_checkpoint(checkpointFile)
+                                self.log_manager.log_state()
 
                                 # self.training_report(loss)
 

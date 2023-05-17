@@ -18,11 +18,26 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
 
+    if args.force:
+        # remove previous checkpoints
+        net.log_manager.clear()
+
     if args.checkpoint:
         try:
-            net.load_checkpoint(args.checkpoint)
+            for thisEntry in net.log_manager.entries:
+                if os.path.abspath(args.checkpoint) == os.path.abspath(thisEntry.outDir):
+                    print("found matching entry:", thisEntry.outDir)
+                    thisEntry.load()
+                
         except IOError:
             print ("could not load from checkpoint!")
+
+        # if there's a previous checkpoint, start there
+    elif any(net.log_manager.entries):
+            latestCheckpoint = net.log_manager.entries[-1]
+            latestCheckpoint.load()
+
+            print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
     
     infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
@@ -35,19 +50,6 @@ def main(args):
     print ("initializing data loader...")
     dl = DataLoader(infileList, batchSize = manifest['batchSize'])
     
-    if args.force:
-        # remove previous checkpoints
-        for oldCheckpoint in os.listdir(os.path.join(manifest['outdir'],
-                                                     'checkpoints')):
-            print ('removing ', oldCheckpoint)
-            os.remove(os.path.join(manifest['outdir'],
-                                   'checkpoints',
-                                   oldCheckpoint))
-        net.manifest['checkpoints'] = []
-        reportFile = os.path.join(manifest['outdir'],
-                                  'train_report.dat')
-        if os.path.exists(reportFile):
-            os.remove(reportFile)
         
     print ("training...")
     net.trainLoop(dl)
