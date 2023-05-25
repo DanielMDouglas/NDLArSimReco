@@ -21,18 +21,17 @@ def main(args):
     if args.force:
         # remove previous checkpoints
         net.log_manager.clear()
-
-    if args.checkpoint:
+    elif args.checkpoint:
         try:
-            for thisEntry in net.log_manager.entries:
-                if os.path.abspath(args.checkpoint) == os.path.abspath(thisEntry.outDir):
-                    print("found matching entry:", thisEntry.outDir)
-                    thisEntry.load()
+            print ("loading from checkpoint", args.checkpoint)
+            net.log_manager.revert_state(args.checkpoint)            
+            # for thisEntry in net.log_manager.entries:
+            #     if os.path.abspath(args.checkpoint) == os.path.abspath(thisEntry.outDir):
+            #         print("found matching entry:", thisEntry.outDir)
+            #         thisEntry.load()
                 
         except IOError:
             print ("could not load from checkpoint!")
-
-        # if there's a previous checkpoint, start there
     elif any(net.log_manager.entries):
             latestCheckpoint = net.log_manager.entries[-1]
             latestCheckpoint.load()

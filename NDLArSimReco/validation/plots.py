@@ -6,7 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
-from SLACplots import colors
+# from SLACplots import colors
 
 import h5py
 

@@ -59,9 +59,23 @@ class DataLoader:
         self.edep = f['edep']
         self.evinfo = f['evinfo']
 
-        self.setSampleLoadOrder()
+        self.genSampleLoadOrder()
         
-    def setSampleLoadOrder(self):
+    def setSampleLoadOrder(self, sampleLoadOrder):
+        """
+        Manually specify the sample load order from a list
+        used when resuming a training process from a checkpoint
+        """
+        self.sampleLoadOrder = sampleLoadOrder
+
+    def getSampleLoadOrder(self, sampleLoadOrder):
+        """
+        Getter method for the sample load order
+        used when saving a training checkpoint
+        """
+        return self.sampleLoadOrder
+        
+    def genSampleLoadOrder(self):
         # set the order that events/images within a given file
         # are sampled
         # This should be redone after each file is loaded
@@ -81,6 +95,7 @@ class DataLoader:
                 if len(theseHits) == 0:
                     continue
                 else:
+                    print (evtIndex)
                     hits.append(theseHits)
                     edep.append(theseEdep)
 
@@ -163,9 +178,9 @@ class RawDataLoader:
 
         self.t0_grp = EvtParser.get_t0(self.packets)
 
-        self.setSampleLoadOrder()
+        self.genSampleLoadOrder()
         
-    def setSampleLoadOrder(self):
+    def genSampleLoadOrder(self):
         # set the order that events/images within a given file
         # are sampled
         # This should be redone after each file is loaded

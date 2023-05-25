@@ -125,11 +125,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.n_epoch = 0
         self.n_iter = 0
 
-        if 'lr' in self.manifest:
-            self.lr = self.manifest['lr']
-        else:
-            self.lr = 1.e-4
-
         self.criterion = lossDict[self.manifest['loss']]()
 
         # load layer structure from the manifest
@@ -138,6 +133,13 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.layers.append(layer)
                 
         self.network = nn.Sequential(*self.layers)
+        
+        if 'lr' in self.manifest:
+            self.lr = self.manifest['lr']
+        else:
+            self.lr = 1.e-4
+        self.optimizer = optim.Adam(self.parameters(), 
+                                    lr = self.lr)
             
     def forward(self, x):
         return self.network(x)
@@ -205,8 +207,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # optimizer = optim.SGD(self.parameters(), 
         #                       lr = self.lr, 
         #                       momentum = 0.9)
-        optimizer = optim.Adam(self.parameters(), 
-                              lr = self.lr)
         # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
         self.train()
@@ -222,18 +222,19 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             else:
 
                 dataLoader.setFileLoadOrder()
-                pbar = tqdm.tqdm(enumerate(dataLoader.load()),
-                                 total = dataLoader.batchesPerEpoch)
-                for j, (hits, edep) in pbar:
+                # pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+                #                  total = dataLoader.batchesPerEpoch)
+                # for j, (hits, edep) in pbar:
+                for j, (hits, edep) in enumerate(dataLoader.load()):
                     if j < self.n_iter:
                         continue
                     else:
-                        optimizer.zero_grad()
+                        self.optimizer.zero_grad()
 
                         hits.features[:,0] /= 20.
 
-                        if report:
-                            with profile(activities=[ProfilerActivity.CUDA],
+                        if report:  
+                          with profile(activities=[ProfilerActivity.CUDA],
                                          profile_memory = True,
                                          record_shapes = True) as prof:
                                 with record_function("model_inference"):
@@ -245,29 +246,23 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         else:
                             output = self.forward(hits)
 
-                        # print ("hits", 
-                        #        torch.mean(hits.features[:,0]).item(),
-                        #        torch.min(hits.features[:,0]).item(),
-                        #        torch.max(hits.features[:,0]).item())
-                        # print ("edep", 
-                        #        torch.mean(edep.features[:,0]).item(),
-                        #        torch.min(edep.features[:,0]).item(),
-                        #        torch.max(edep.features[:,0]).item())
-
                         loss = self.criterion(output, edep)
  
+                        # pbarMessage = " ".join(["epoch:",
+                        #                        str(self.n_epoch),
+                        #                        "loss:",
+                        #                        str(round(loss.item(), 4))])
                         pbarMessage = " ".join(["epoch:",
-                                               str(self.n_epoch),
-                                               "loss:",
-                                               str(round(loss.item(), 4))])
-                        pbar.set_description(pbarMessage)
+                                                str(self.n_epoch),
+                                                "iter:",
+                                                str(self.n_iter),
+                                                "loss:",
+                                                str(round(loss.item(), 4))])
+                        print (pbarMessage)
+                        print (np.mean(hits.features.detach().numpy()))
+                        # pbar.set_description(pbarMessage)
                         self.training_report(loss)
                 
-                        loss.backward()
-                        optimizer.step()
-        
-                        self.n_iter += 1
-
                         # save a checkpoint of the model every 10% of an epoch
                         remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
                         if remainder < prevRemainder:
@@ -284,7 +279,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                             except AttributeError:
                                 pass
                         prevRemainder = remainder
-            
+
+                        loss.backward()
+                        self.optimizer.step()        
+
+                        self.n_iter += 1
+                        
                 self.n_epoch += 1
                 self.n_iter = 0
 
@@ -295,12 +295,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
     def training_report(self, loss):
         """
         Add to the running report file at a certain moment in the training process
+        now controlled by logManager
         """
 
-        with open(self.reportFile, 'a') as rf:
-            rf.write('{} \t {} \t {} \n'.format(self.n_epoch, 
-                                                self.n_iter, 
-                                                loss))
+        self.log_manager.lossBuffer.append([self.n_epoch, 
+                                            self.n_iter, 
+                                            loss.item()])
 
     def rewind_report(self):
         """
