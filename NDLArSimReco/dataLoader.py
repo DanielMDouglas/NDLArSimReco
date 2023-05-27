@@ -1,7 +1,3 @@
-
-import MinkowskiEngine as ME
-ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
-
 import torch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -41,15 +37,29 @@ class DataLoader:
                 self.fileList.remove(fileName)
 
         self.batchesPerEpoch = int(nImages/self.batchSize)
+
+        self.genFileLoadOrder()
+        self.sampleLoadOrder = np.empty(0,)
         
-    def setFileLoadOrder(self):
+    def genFileLoadOrder(self):
         # set the order in which the files will be parsed
         # this should be redone at the beginning of every epoch
         nFiles = len(self.fileList)
         self.fileLoadOrder = np.random.choice(nFiles,
                                               size = nFiles,
                                               replace = False)
+    def setFileLoadOrder(self, fileLoadOrder):
+        """
+        Setter method for the file load order
+        """
+        self.fileLoadOrder = np.array(fileLoadOrder)
         
+    def getFileLoadOrder(self):
+        """
+        Getter method for the file load order
+        """
+        return self.fileLoadOrder.tolist()
+    
     def loadNextFile(self, fileIndex):
         # prime the next file.  This is done after the previous
         # file has been fully iterated through
@@ -59,21 +69,19 @@ class DataLoader:
         self.edep = f['edep']
         self.evinfo = f['evinfo']
 
-        self.genSampleLoadOrder()
-        
     def setSampleLoadOrder(self, sampleLoadOrder):
         """
         Manually specify the sample load order from a list
         used when resuming a training process from a checkpoint
         """
-        self.sampleLoadOrder = sampleLoadOrder
+        self.sampleLoadOrder = np.array(sampleLoadOrder)
 
-    def getSampleLoadOrder(self, sampleLoadOrder):
+    def getSampleLoadOrder(self):
         """
         Getter method for the sample load order
         used when saving a training checkpoint
         """
-        return self.sampleLoadOrder
+        return self.sampleLoadOrder.tolist()
         
     def genSampleLoadOrder(self):
         # set the order that events/images within a given file
@@ -85,9 +93,11 @@ class DataLoader:
                                                 size = nImages,
                                                 replace = False)
 
-    def load(self):
+    def load(self, transform = None):
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
+            if len(self.sampleLoadOrder) == 0: 
+                self.genSampleLoadOrder()
             hits = []
             edep = []
             for evtIndex in self.sampleLoadOrder:
@@ -95,14 +105,18 @@ class DataLoader:
                 if len(theseHits) == 0:
                     continue
                 else:
-                    print (evtIndex)
                     hits.append(theseHits)
                     edep.append(theseEdep)
 
                 if len(hits) == self.batchSize:
-                    yield array_to_sparseTensor(hits, edep)
+                    if transform:
+                        # yield array_to_sparseTensor(hits, edep)
+                        yield transform(hits, edep)
+                    else:
+                        yield hits, edep
                     hits = []
                     edep = []
+            self.sampleLoadOrder = np.empty(0,)
             
     def load_event(self, event_id):
         # load a given event from the currently loaded file
@@ -189,8 +203,9 @@ class RawDataLoader:
         self.sampleLoadOrder = np.random.choice(nBatches,
                                                 size = nBatches,
                                                 replace = False)
+        print ("generating a new sample load order!")
 
-    def load(self):
+    def load(self, transform = None):
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
             hits = []
@@ -206,7 +221,11 @@ class RawDataLoader:
                         hits.append(theseHits)
                         tracks.append(theseTracks)
                 else:
-                    yield array_to_sparseTensor(hits, tracks)
+                    if transform:
+                        # yield array_to_sparseTensor(hits, tracks)
+                        yield transform(hits, tracks)
+                    else:
+                        yield hits, edep
                     hits = []
                     tracks = []
             
@@ -293,109 +312,3 @@ class RawDataLoader:
             return hits, voxels, strongestTrack, hits_ev
         else:
             return hits, voxels
-
-def array_to_sparseTensor(hitList, edepList):
-    ME.clear_global_coordinate_manager()
-
-    hitCoordTensors = []
-    hitFeatureTensors = []
-    
-    edepCoordTensors = []
-    edepFeatureTensors = []
-
-    LarpixPadCoordTensors = []
-    LarpixPadFeatureTensors = []
-
-    EdepPadCoordTensors = []
-    EdepPadFeatureTensors = []
-
-    # GenericPadCoordTensors = []
-    # GenericPadFeatureTensors = []
-    
-    for hits, edep in zip(hitList, edepList):
-        
-        # trackX, trackZ, trackY, dE = edep
-        edepX = edep['x']
-        edepY = edep['z']
-        edepZ = edep['y']
-        dE = edep['dE']
-        
-        edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
-        edepFeature = torch.FloatTensor(np.array([dE])).T
-                
-        edepCoordTensors.append(edepCoords)
-        edepFeatureTensors.append(edepFeature)
-
-        # hitsX, hitsY, hitsZ, hitsQ = hits
-        hitsX = hits['x']
-        hitsY = hits['y']
-        hitsZ = hits['z']
-        hitsQ = hits['q']
-
-        hitCoords = torch.FloatTensor(np.array([hitsX, hitsY, hitsZ])).T
-        hitFeature = torch.FloatTensor(np.array([hitsQ])).T
-            
-        hitCoordTensors.append(hitCoords)
-        hitFeatureTensors.append(hitFeature)
-
-        LarpixPadCoords = edepCoords
-        LarpixPadFeature = torch.zeros((LarpixPadCoords.shape[0], 1))
-        
-        LarpixPadCoordTensors.append(LarpixPadCoords)
-        LarpixPadFeatureTensors.append(LarpixPadFeature)
-
-        EdepPadCoords = hitCoords
-        EdepPadFeature = torch.zeros((EdepPadCoords.shape[0], 1))
-        
-        EdepPadCoordTensors.append(EdepPadCoords)
-        EdepPadFeatureTensors.append(EdepPadFeature)
-
-        # GenericPadCoords = hitCoords # add to this list everything +/- 1 in each dimension
-        # GenericPadFeature = torch.zeros((GenericPadCoords.shape[0], 1))
-
-        # GenericPadCoordTensors.append(GenericPadCoords)
-        # GenericPadFeatureTensors.apend(GenericPadFeature)
-        
-    hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
-                                                    hitFeatureTensors,
-                                                    dtype = torch.int32)
-                
-    edepCoords, edepFeature = ME.utils.sparse_collate(edepCoordTensors, 
-                                                      edepFeatureTensors,
-                                                      dtype = torch.int32)
-    
-    LarpixPadCoords, LarpixPadFeature = ME.utils.sparse_collate(LarpixPadCoordTensors, 
-                                                                LarpixPadFeatureTensors,
-                                                                dtype = torch.int32)
-
-    EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
-                                                            EdepPadFeatureTensors,
-                                                            dtype = torch.int32)
-
-    # GenericPadCoords, GenericPadFeature = ME.utils.sparse_collate(GenericPadCoordTensors,
-    #                                                               GenericPadFeatureTensors,
-    #                                                               dtype = torch.int32)
-                
-    larpix = ME.SparseTensor(features = hitFeature.to(device),
-                             coordinates = hitCoords.to(device))
-    edep = ME.SparseTensor(features = edepFeature.to(device),
-                           coordinates = edepCoords.to(device),
-                           coordinate_manager = larpix.coordinate_manager,
-                           )
-    LarpixPad = ME.SparseTensor(features = LarpixPadFeature.to(device),
-                                coordinate_map_key = edep.coordinate_map_key,
-                                coordinate_manager = larpix.coordinate_manager,
-                                )
-    EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
-                              coordinate_map_key =  larpix.coordinate_map_key,
-                              coordinate_manager = larpix.coordinate_manager,
-                              )
-
-    # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
-    #                              coordinate_map_key = larpix.coordinate_map_key,
-    #                              coordinate_manager = larpix.coordinate_manager)
-
-    larpix = larpix + LarpixPad # + GenericPad
-    edep = edep + EdepPad # + GenericPad
-    
-    return larpix, edep

@@ -20,9 +20,9 @@ import tqdm
 import os
 
 from . import loss
-from .layers import uresnet_layers
-from .layers import blocks
+from .layers import uresnet_layers, blocks
 from .trainLogging import *
+from .utils import sparseTensor
 
 lossDict = {'NLL': loss.NLL,
             'NLL_moyal': loss.NLL_moyal,
@@ -153,7 +153,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.manifest['checkpoints'].append(filename)
 
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
-            print ('dumping manifest to', os.path.join(self.outDir, 'manifest.yaml'))
+            print ('dumping network manifest to', os.path.join(self.outDir, 'manifest.yaml'))
             yaml.dump(self.manifest, mf)
 
     def load_checkpoint(self, filename):
@@ -220,12 +220,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
             else:
-
-                dataLoader.setFileLoadOrder()
-                # pbar = tqdm.tqdm(enumerate(dataLoader.load()),
-                #                  total = dataLoader.batchesPerEpoch)
-                # for j, (hits, edep) in pbar:
-                for j, (hits, edep) in enumerate(dataLoader.load()):
+                pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = sparseTensor.array_to_sparseTensor)),
+                                 total = dataLoader.batchesPerEpoch)
+                for j, (hits, edep) in pbar:
                     if j < self.n_iter:
                         continue
                     else:
@@ -234,12 +231,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         hits.features[:,0] /= 20.
 
                         if report:  
-                          with profile(activities=[ProfilerActivity.CUDA],
+                            with profile(activities=[ProfilerActivity.CUDA],
                                          profile_memory = True,
                                          record_shapes = True) as prof:
                                 with record_function("model_inference"):
                                     output = self(hits)
-
+                                    
                             print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                             row_limit = 10))
                     
@@ -248,33 +245,17 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
                         loss = self.criterion(output, edep)
  
-                        # pbarMessage = " ".join(["epoch:",
-                        #                        str(self.n_epoch),
-                        #                        "loss:",
-                        #                        str(round(loss.item(), 4))])
                         pbarMessage = " ".join(["epoch:",
-                                                str(self.n_epoch),
-                                                "iter:",
-                                                str(self.n_iter),
-                                                "loss:",
-                                                str(round(loss.item(), 4))])
-                        print (pbarMessage)
-                        print (np.mean(hits.features.detach().numpy()))
-                        # pbar.set_description(pbarMessage)
+                                               str(self.n_epoch),
+                                               "loss:",
+                                               str(round(loss.item(), 4))])
                         self.training_report(loss)
                 
                         # save a checkpoint of the model every 10% of an epoch
                         remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
                         if remainder < prevRemainder:
                             try:
-                                # checkpointFile = os.path.join(self.outDir,
-                                #                               'checkpoints',
-                                #                               'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                                # self.make_checkpoint(checkpointFile)
                                 self.log_manager.log_state()
-
-                                # self.training_report(loss)
-
                                 device.empty_cache()
                             except AttributeError:
                                 pass
@@ -290,6 +271,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
             # scheduler.step()
 
+        self.log_manager.log_state()
         print ("final loss:", loss.item())        
 
     def training_report(self, loss):

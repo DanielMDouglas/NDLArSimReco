@@ -36,6 +36,8 @@ class LogManager:
         self.network = network
         self.outDir= network.outDir
 
+        self.dataLoader = None # initially None, should be assigned when a dataLoader is used
+
         self.entries = []
         for existingCheckpoint in os.listdir(os.path.join(self.outDir,
                                                           "checkpoints")):
@@ -71,9 +73,6 @@ class LogManager:
         thisEntry["n_epoch"] = n_epoch
         thisEntry["n_iter"] = n_iter
 
-        print ("writing manifest")
-        print ("writing manifest")
-
         thisEntry.write()
         
         self.entries.append(thisEntry)
@@ -84,8 +83,7 @@ class LogManager:
         """
         revert the network to the state
         defined by a given log entry
-        clear all following log entries
-        
+        clear all following log entries        
         """
         for thisEntry in self.entries:
             if check_equality(thisEntry, argEntry):
@@ -119,31 +117,22 @@ class LogManager:
             self.entries.remove(thisEntry)
             thisEntry.erase()
         
-    def rewind(self):
-        """
-        Recall the state of the network from a given point
-        Set the weights, erase orphaned logs, reset the seed
-        """
-        thisEntry = None # how to specify?
-
-        # set weights
-        # self.network.load_checkpoint(filename)
-        # erase orphaned logs
-        # reset seed
-
-        return
     def get_loss(self):
         """
         return the loss time series
         """
+        loss_series = np.empty((0,3))
         for log_entry in self.entries:
-            pass
-        return
+            loss_series = np.concatenate([loss_series, log_entry.get_loss()])
+        return loss_series
+    
     def save_report(self):
         """
         Save the collated training data (train/eval loss)
         """
-        return
+        loss_series = self.get_loss()
+        np.savetxt(os.path.join(self.outDir, 'train_report.dat'),
+                   loss_series)
 
 class LogEntry:
     def __init__(self, manager, logDir):
@@ -165,6 +154,7 @@ class LogEntry:
             self.manifest['torchStatePath'] = os.path.join(logDir, "RNGstate.torch")
             self.manifest['optimizerStatePath'] = os.path.join(logDir, "optimState.torch")
             self.manifest['checkpointPath'] = os.path.join(logDir, "weights.ckpt")
+            self.manifest['loadOrderPath'] = os.path.join(logDir, "loadOrder.yaml")
             self.manifest['lossPath'] = os.path.join(logDir, "loss.dat")
         
         self.outDir = logDir
@@ -196,6 +186,13 @@ class LogEntry:
         optimState = self.manager.network.optimizer.state_dict()
         torch.save(optimState, self.manifest['optimizerStatePath'])
 
+        if self.manager.dataLoader:
+            with open(self.manifest['loadOrderPath'], 'w') as lop:
+                loadOrderDict = {"fileLoadOrder": self.manager.dataLoader.getFileLoadOrder(),
+                                 "sampleLoadOrder": self.manager.dataLoader.getSampleLoadOrder(),
+                                 }
+                yaml.dump(loadOrderDict, lop)
+
         np.savetxt(self.manifest['lossPath'], self.manager.lossBuffer)
 
     def load(self):
@@ -221,6 +218,14 @@ class LogEntry:
         print ("loading to", self.manifest['n_epoch'], self.manifest['n_iter'])
         self.manager.network.n_epoch = self.manifest['n_epoch']
         self.manager.network.n_iter = self.manifest['n_iter']
+
+        if self.manager.dataLoader:
+            loadOrderDict = loadManifestDict(self.manifest['loadOrderPath'])
+            self.manager.dataLoader.setFileLoadOrder(loadOrderDict['fileLoadOrder'])
+            self.manager.dataLoader.setSampleLoadOrder(loadOrderDict['sampleLoadOrder'])
+
+    def get_loss(self):
+        return np.loadtxt(self.manifest['lossPath'])
 
     def erase(self):
         """

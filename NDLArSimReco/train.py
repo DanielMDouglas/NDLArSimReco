@@ -18,6 +18,19 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
 
+    infilePath = manifest['trainfilePath'] 
+    if os.path.isdir(infilePath[0]):
+        infileList = [os.path.join(infilePath[0], thisFile) 
+                      for thisFile in os.listdir(infilePath[0])]
+        print ("loading files from list", infileList)
+    else:
+        infileList = infilePath
+        print ("loading files from list", infileList)
+
+    print ("initializing data loader...")
+    dl = DataLoader(infileList, batchSize = manifest['batchSize'])
+    net.log_manager.dataLoader = dl
+    
     if args.force:
         # remove previous checkpoints
         net.log_manager.clear()
@@ -37,25 +50,14 @@ def main(args):
             latestCheckpoint.load()
 
             print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
-    
-    infilePath = manifest['trainfilePath'] 
-    if os.path.isdir(infilePath[0]):
-        infileList = [os.path.join(infilePath[0], thisFile) 
-                      for thisFile in os.listdir(infilePath[0])]
-        print ("loading files from list", infileList)
-    else:
-        infileList = infilePath
-        print ("loading files from list", infileList)
-    print ("initializing data loader...")
-    dl = DataLoader(infileList, batchSize = manifest['batchSize'])
-    
-        
+            
     print ("training...")
     net.trainLoop(dl)
 
     checkpointFile = os.path.join(net.outDir,
                                   'checkpoint_final_{}_{}.ckpt'.format(manifest['nEpochs'], 0))
     net.make_checkpoint(checkpointFile)
+    net.log_manager.save_report()
 
 if __name__ == '__main__':
 
