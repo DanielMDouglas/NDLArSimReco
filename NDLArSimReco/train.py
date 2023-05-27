@@ -18,27 +18,6 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
 
-    if args.force:
-        # remove previous checkpoints
-        net.log_manager.clear()
-
-    if args.checkpoint:
-        try:
-            for thisEntry in net.log_manager.entries:
-                if os.path.abspath(args.checkpoint) == os.path.abspath(thisEntry.outDir):
-                    print("found matching entry:", thisEntry.outDir)
-                    thisEntry.load()
-                
-        except IOError:
-            print ("could not load from checkpoint!")
-
-        # if there's a previous checkpoint, start there
-    elif any(net.log_manager.entries):
-            latestCheckpoint = net.log_manager.entries[-1]
-            latestCheckpoint.load()
-
-            print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
-    
     infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
@@ -47,16 +26,38 @@ def main(args):
     else:
         infileList = infilePath
         print ("loading files from list", infileList)
+
     print ("initializing data loader...")
     dl = DataLoader(infileList, batchSize = manifest['batchSize'])
+    net.log_manager.dataLoader = dl
     
-        
+    if args.force:
+        # remove previous checkpoints
+        net.log_manager.clear()
+    elif args.checkpoint:
+        try:
+            print ("loading from checkpoint", args.checkpoint)
+            net.log_manager.revert_state(args.checkpoint)            
+            # for thisEntry in net.log_manager.entries:
+            #     if os.path.abspath(args.checkpoint) == os.path.abspath(thisEntry.outDir):
+            #         print("found matching entry:", thisEntry.outDir)
+            #         thisEntry.load()
+                
+        except IOError:
+            print ("could not load from checkpoint!")
+    elif any(net.log_manager.entries):
+            latestCheckpoint = net.log_manager.entries[-1]
+            latestCheckpoint.load()
+
+            print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
+            
     print ("training...")
     net.trainLoop(dl)
 
     checkpointFile = os.path.join(net.outDir,
                                   'checkpoint_final_{}_{}.ckpt'.format(manifest['nEpochs'], 0))
     net.make_checkpoint(checkpointFile)
+    net.log_manager.save_report()
 
 if __name__ == '__main__':
 

@@ -20,9 +20,9 @@ import tqdm
 import os
 
 from . import loss
-from .layers import uresnet_layers
-from .layers import blocks
+from .layers import uresnet_layers, blocks
 from .trainLogging import *
+from .utils import sparseTensor
 
 lossDict = {'NLL': loss.NLL,
             'NLL_moyal': loss.NLL_moyal,
@@ -125,11 +125,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.n_epoch = 0
         self.n_iter = 0
 
-        if 'lr' in self.manifest:
-            self.lr = self.manifest['lr']
-        else:
-            self.lr = 1.e-4
-
         self.criterion = lossDict[self.manifest['loss']]()
 
         # load layer structure from the manifest
@@ -138,6 +133,13 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             self.layers.append(layer)
                 
         self.network = nn.Sequential(*self.layers)
+        
+        if 'lr' in self.manifest:
+            self.lr = self.manifest['lr']
+        else:
+            self.lr = 1.e-4
+        self.optimizer = optim.Adam(self.parameters(), 
+                                    lr = self.lr)
             
     def forward(self, x):
         return self.network(x)
@@ -151,7 +153,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.manifest['checkpoints'].append(filename)
 
         with open(os.path.join(self.outDir, 'manifest.yaml'), 'w') as mf:
-            print ('dumping manifest to', os.path.join(self.outDir, 'manifest.yaml'))
+            print ('dumping network manifest to', os.path.join(self.outDir, 'manifest.yaml'))
             yaml.dump(self.manifest, mf)
 
     def load_checkpoint(self, filename):
@@ -205,8 +207,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # optimizer = optim.SGD(self.parameters(), 
         #                       lr = self.lr, 
         #                       momentum = 0.9)
-        optimizer = optim.Adam(self.parameters(), 
-                              lr = self.lr)
         # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
         self.train()
@@ -220,39 +220,28 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
             else:
-
-                dataLoader.setFileLoadOrder()
-                pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+                pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = sparseTensor.array_to_sparseTensor)),
                                  total = dataLoader.batchesPerEpoch)
                 for j, (hits, edep) in pbar:
                     if j < self.n_iter:
                         continue
                     else:
-                        optimizer.zero_grad()
+                        self.optimizer.zero_grad()
 
                         hits.features[:,0] /= 20.
 
-                        if report:
+                        if report:  
                             with profile(activities=[ProfilerActivity.CUDA],
                                          profile_memory = True,
                                          record_shapes = True) as prof:
                                 with record_function("model_inference"):
                                     output = self(hits)
-
+                                    
                             print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                             row_limit = 10))
                     
                         else:
                             output = self.forward(hits)
-
-                        # print ("hits", 
-                        #        torch.mean(hits.features[:,0]).item(),
-                        #        torch.min(hits.features[:,0]).item(),
-                        #        torch.max(hits.features[:,0]).item())
-                        # print ("edep", 
-                        #        torch.mean(edep.features[:,0]).item(),
-                        #        torch.min(edep.features[:,0]).item(),
-                        #        torch.max(edep.features[:,0]).item())
 
                         loss = self.criterion(output, edep)
  
@@ -260,47 +249,40 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                str(self.n_epoch),
                                                "loss:",
                                                str(round(loss.item(), 4))])
-                        pbar.set_description(pbarMessage)
                         self.training_report(loss)
                 
-                        loss.backward()
-                        optimizer.step()
-        
-                        self.n_iter += 1
-
                         # save a checkpoint of the model every 10% of an epoch
                         remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
                         if remainder < prevRemainder:
                             try:
-                                # checkpointFile = os.path.join(self.outDir,
-                                #                               'checkpoints',
-                                #                               'checkpoint_'+str(self.n_epoch)+'_'+str(self.n_iter)+'.ckpt')
-                                # self.make_checkpoint(checkpointFile)
                                 self.log_manager.log_state()
-
-                                # self.training_report(loss)
-
                                 device.empty_cache()
                             except AttributeError:
                                 pass
                         prevRemainder = remainder
-            
+
+                        loss.backward()
+                        self.optimizer.step()        
+
+                        self.n_iter += 1
+                        
                 self.n_epoch += 1
                 self.n_iter = 0
 
             # scheduler.step()
 
+        self.log_manager.log_state()
         print ("final loss:", loss.item())        
 
     def training_report(self, loss):
         """
         Add to the running report file at a certain moment in the training process
+        now controlled by logManager
         """
 
-        with open(self.reportFile, 'a') as rf:
-            rf.write('{} \t {} \t {} \n'.format(self.n_epoch, 
-                                                self.n_iter, 
-                                                loss))
+        self.log_manager.lossBuffer.append([self.n_epoch, 
+                                            self.n_iter, 
+                                            loss.item()])
 
     def rewind_report(self):
         """
