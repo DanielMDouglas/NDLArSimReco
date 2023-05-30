@@ -37,8 +37,6 @@ def main(args):
 
     hits, edep = next(dl.load())
 
-    hits.features[:,0] /= 20.
-
     net.eval()
     prediction = net(hits)
     predMean, predStd = net.criterion.feature_map(prediction)

@@ -228,8 +228,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                     else:
                         self.optimizer.zero_grad()
 
-                        hits.features[:,0] /= 20.
-
                         if report:  
                             with profile(activities=[ProfilerActivity.CUDA],
                                          profile_memory = True,
@@ -323,8 +321,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         for i, (larpix, edep) in pbar:
             if i >= evalBatches:
                 break # we're done here
-
-            larpix.features[:,0] /= 20.
 
             if report:
                 with profile(activities=[ProfilerActivity.CUDA],
