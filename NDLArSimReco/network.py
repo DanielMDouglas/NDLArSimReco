@@ -249,6 +249,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                str(self.n_epoch),
                                                "loss:",
                                                str(round(loss.item(), 4))])
+                        pbar.set_description(pbarMessage)
                         self.training_report(loss)
                 
                         # save a checkpoint of the model every 10% of an epoch
