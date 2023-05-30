@@ -110,9 +110,17 @@ def main(args):
         nHits_ev = len(hits[0])
         evHits = np.empty(nHits_ev, dtype = output_dtypes['hits'])
         evHits['eventID'] = event_id*np.ones(nHits_ev)
-        evHits['x'] = np.array(hits[0])
+        # evHits['x'] = np.array(hits[0])
+        # evHits['y'] = np.array(hits[1])
+        # evHits['z'] = np.array(hits[2])
+
+        # switch x and z coordinates for hits
+        # we're using the ND coordinates, so
+        # x is the horizontal (beam-left) direction
+        # z is the beam direction
+        evHits['z'] = np.array(hits[0])
         evHits['y'] = np.array(hits[1])
-        evHits['z'] = np.array(hits[2])
+        evHits['x'] = np.array(hits[2])
         evHits['q'] = np.array(hits[3])
 
         edepEthreshold = 0.25
@@ -122,10 +130,8 @@ def main(args):
         evEdep = np.empty(nEdep_ev, dtype = output_dtypes['edep'])
         evEdep['eventID'] = event_id*np.ones(nEdep_ev)
         evEdep['x'] = np.array(voxels[0])[thresholdMask]
-        # evEdep['y'] = np.array(voxels[1])[thresholdMask]
-        # evEdep['z'] = np.array(voxels[2])[thresholdMask]
-        evEdep['z'] = np.array(voxels[1])[thresholdMask]
-        evEdep['y'] = np.array(voxels[2])[thresholdMask]
+        evEdep['y'] = np.array(voxels[1])[thresholdMask]
+        evEdep['z'] = np.array(voxels[2])[thresholdMask]
         evEdep['dE'] = np.array(voxels[3])[thresholdMask]
 
         nEv_ev = len(primPID)

@@ -28,8 +28,8 @@ def array_to_sparseTensor(hitList, edepList):
         
         # trackX, trackZ, trackY, dE = edep
         edepX = edep['x']
-        edepY = edep['z']
-        edepZ = edep['y']
+        edepY = edep['y']
+        edepZ = edep['z']
         dE = edep['dE']
         
         edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
