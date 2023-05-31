@@ -104,15 +104,12 @@ def main(args):
     nEvents = dl.t0_grp.shape[0]
 
     for event_id in range(nEvents):
-        hits, voxels = dl.load_event(event_id)
+        hits, voxels = dl.load_image(event_id)
         primPID = get_primary_PID(dl, event_id)
 
         nHits_ev = len(hits[0])
         evHits = np.empty(nHits_ev, dtype = output_dtypes['hits'])
         evHits['eventID'] = event_id*np.ones(nHits_ev)
-        # evHits['x'] = np.array(hits[0])
-        # evHits['y'] = np.array(hits[1])
-        # evHits['z'] = np.array(hits[2])
 
         # switch x and z coordinates for hits
         # we're using the ND coordinates, so

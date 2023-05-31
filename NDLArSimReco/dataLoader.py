@@ -149,7 +149,7 @@ class classifierDataLoader (GenericDataLoader):
         return self.hits_ev, self.edep_ev
 
         
-class RawDataLoader:
+class RawDataLoader (GenericDataLoader):
     """
     This version of the DataLoader class is meant to parse the raw
     larpix + voxels format.  It has much more information than is needed
@@ -191,14 +191,7 @@ class RawDataLoader:
             nImages += len(np.unique(t0_grp))
 
         self.batchesPerEpoch = int(nImages/batchSize)
-        
-    def setFileLoadOrder(self):
-        # set the order in which the files will be parsed
-        # this should be redone at the beginning of every epoch
-        self.fileLoadOrder = np.random.choice(len(self.fileList),
-                                              size = len(self.fileList),
-                                              replace = False)
-        
+                
     def loadNextFile(self, fileIndex):
         # prime the next file.  This is done after the previous
         # file has been fully iterated through
@@ -225,31 +218,7 @@ class RawDataLoader:
                                                 replace = False)
         print ("generating a new sample load order!")
 
-    def load(self, transform = None):
-        for fileIndex in self.fileLoadOrder:
-            self.loadNextFile(fileIndex)
-            hits = []
-            tracks = []
-            for evtIndex in self.sampleLoadOrder:
-                if not len(hits) == self.batchSize:
-                    theseHits, theseTracks = self.load_event(evtIndex)
-                    if len(theseHits) == 0:
-                        continue
-                    elif theseHits[0].shape[0] == 0 or theseTracks[0].shape[0] == 0:
-                        continue
-                    else:
-                        hits.append(theseHits)
-                        tracks.append(theseTracks)
-                else:
-                    if transform:
-                        # yield array_to_sparseTensor(hits, tracks)
-                        yield transform(hits, tracks)
-                    else:
-                        yield hits, edep
-                    hits = []
-                    tracks = []
-            
-    def load_event(self, event_id, get_true_tracks = False):
+    def load_image(self, event_id, get_true_tracks = False):
         # load a given event from the currently loaded file
         t0 = self.t0_grp[event_id][0]
         # print("--------event_id: ", event_id)
@@ -261,32 +230,22 @@ class RawDataLoader:
         trackAssn_ev = self.assn[pckt_mask] 
         trackIDs_ev = trackAssn_ev['track_ids']
         trackFractions_ev = trackAssn_ev['fraction']
-        # print (trackIDs_ev, trackFractions_ev) 
-        # print (packets_ev.shape, trackIDs_ev.shape, trackFractions_ev.shape)
 
         strongestTrack = np.empty((packets_ev.shape), dtype = self.tracks.dtype)
         assn = []
-        # print ([thisTrackID for thisTrackID, thisTrackFraction in zip(trackIDs_ev, trackFractions_ev) if
         for i, (packetTID, packetFraction) in enumerate(zip(trackIDs_ev, trackFractions_ev)):
             maxInd = list(packetFraction).index(max(packetFraction))
             trackInd = packetTID[maxInd]
             strongestTrack[i] = self.tracks[trackInd]
-
-            
-            # assn.append((hitInd, trackInd))
             
         # it should be similar to how I do it for the other thing
         # an array with a row for each hit
         # and an entry with the track index
             
         # strongestTrack = trackIDs_ev[trackFractions_ev == np.max(trackFractions_ev, axis = -1)]
-        # print (event_id, trackIDs_ev)
-        # print (strongestTrack)
-        # print (len(strongestTrack), len(packets_ev))
         # tracks_ev = self.tracks[trackIDs_ev]
 
         t0_correction = -38
-        # print ("using t0 correction of", t0_correction)
 
         hitX, hitY, hitZ, dQ = HitParser.hit_parser_charge(t0 + t0_correction,
                                                            packets_ev,
