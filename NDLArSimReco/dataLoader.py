@@ -14,17 +14,14 @@ from NDeventDisplay.voxelize import voxelize
 
 from . import detector
 
-class DataLoader:
-    """
-    This version of the DataLoader class is meant to parse the pared down
-    data format.  It should be faster, since all but the needed information
-    has been removed.
-    """
+class GenericDataLoader:
     def __init__(self, infileList, batchSize = 10):
         self.fileList = infileList
 
         self.batchSize = batchSize
 
+        # This is a bit specific...
+        # How to generically find the number of images?
         nImages = 0
         for fileName in self.fileList:
             try:
@@ -40,7 +37,7 @@ class DataLoader:
 
         self.genFileLoadOrder()
         self.sampleLoadOrder = np.empty(0,)
-        
+
     def genFileLoadOrder(self):
         # set the order in which the files will be parsed
         # this should be redone at the beginning of every epoch
@@ -64,10 +61,7 @@ class DataLoader:
         # prime the next file.  This is done after the previous
         # file has been fully iterated through
         self.currentFileName = self.fileList[fileIndex]
-        f = h5py.File(self.currentFileName)
-        self.hits = f['hits']
-        self.edep = f['edep']
-        self.evinfo = f['evinfo']
+        self.currentFile = h5py.File(self.currentFileName)
 
     def setSampleLoadOrder(self, sampleLoadOrder):
         """
@@ -88,7 +82,7 @@ class DataLoader:
         # are sampled
         # This should be redone after each file is loaded
         # self.loadOrder = np.arange(self.t0_grp.shape[0])
-        nImages = len(np.unique(self.evinfo['eventID']))
+        nImages = len(np.unique(self.currentFile['evinfo']['eventID']))
         self.sampleLoadOrder = np.random.choice(nImages,
                                                 size = nImages,
                                                 replace = False)
@@ -98,27 +92,52 @@ class DataLoader:
             self.loadNextFile(fileIndex)
             if len(self.sampleLoadOrder) == 0: 
                 self.genSampleLoadOrder()
-            hits = []
-            edep = []
-            for evtIndex in self.sampleLoadOrder:
-                theseHits, theseEdep = self.load_event(evtIndex)
-                if len(theseHits) == 0:
+            inputs = []
+            truths = []
+            for imgIndex in self.sampleLoadOrder:
+                theseInpts, theseTruths = self.load_image(imgIndex)
+                if len(theseInpts) == 0:
                     continue
                 else:
-                    hits.append(theseHits)
-                    edep.append(theseEdep)
+                    inputs.append(theseInpts)
+                    truths.append(theseTruths)
 
-                if len(hits) == self.batchSize:
+                if len(inputs) == self.batchSize:
                     if transform:
-                        # yield array_to_sparseTensor(hits, edep)
-                        yield transform(hits, edep)
+                        yield transform(inputs, truths)
                     else:
-                        yield hits, edep
-                    hits = []
-                    edep = []
+                        yield inputs, truths
+                    inputs = []
+                    truths = []
             self.sampleLoadOrder = np.empty(0,)
-            
-    def load_event(self, event_id):
+
+    def load_image(imgIndex):
+        return None, None
+
+class DataLoader (GenericDataLoader):
+    """
+    This version of the DataLoader class is meant to parse the pared down
+    data format.  It should be faster, since all but the needed information
+    has been removed.
+    """            
+    def load_image(self, event_id):
+        # load a given event from the currently loaded file
+
+        hits_mask = self.currentFile['hits']['eventID'] == event_id
+        self.hits_ev = self.currentFile['hits'][hits_mask]
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+
+        return self.hits_ev, self.edep_ev
+
+class classifierDataLoader (GenericDataLoader):
+    """
+    This instance of the DataLoader class is mean for training a classifier
+    network.  It should yield inferred edep-sim images (possibly G.T. images
+    as well), alongside the true primary particle type
+    """            
+    def load_image(self, event_id):
         # load a given event from the currently loaded file
 
         hits_mask = self.hits['eventID'] == event_id
@@ -129,6 +148,7 @@ class DataLoader:
 
         return self.hits_ev, self.edep_ev
 
+        
 class RawDataLoader:
     """
     This version of the DataLoader class is meant to parse the raw

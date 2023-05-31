@@ -1,8 +1,7 @@
 trainfilePath:
-  # - /home/dan/studies/NDLArSimReco/test/mu_only_100MeV-500MeV/pared/pared_single_particle_f85029f3-3556-4d0d-a7d5-5031d20ab057.h5
-  - /home/dan/studies/NDLArSimReco/test/procTests/pared_test.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/LE_singleParticle/pared_single_particle_fca09119-24a8-4730-b4f4-4782c4b7add0.h5
 testfilePath:
-  - /home/dan/studies/NDLArSimReco/test/mu_only_100MeV-500MeV/pared/pared_single_particle_f85029f3-3556-4d0d-a7d5-5031d20ab057.h5
+  - /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/LE_singleParticle/pared_single_particle_fca09119-24a8-4730-b4f4-4782c4b7add0.h5
 
 outdir: /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/singleParticle
 
