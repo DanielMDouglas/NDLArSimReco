@@ -29,6 +29,7 @@ lossDict = {'NLL': loss.NLL,
             'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
+            'NLL_voxProp': loss.NLL_voxProp,
             }
 
 def init_layers(layerDictList, in_feat, D):

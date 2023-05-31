@@ -107,3 +107,27 @@ class NLL_moyal (loss):
         LL = torch.sum(logp)/len(y)
 
         return -LL
+
+class NLL_voxProp (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        epsilon = 1.e-2 
+        sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
+
+        isFilledVoxel = outputSparseTensor.features[:,2]
+        isEmptyVoxel = outputSparseTensor.features[:,3]
+
+        return mean, sigma, isFilledVoxel, isEmptyVoxel
+    def loss(self, truth, mean, sigma, isFilledVoxel, isEmptyVoxel):    
+        voxelMask = torch.softmax(torch.stack([isFilledVoxel, isEmptyVoxel]), axis = 0)
+
+        diff = (mean - truth)
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+        maskedLogP = torch.where(voxelMask, logp, torch.zeros_like(logp))
+        
+        LL = torch.sum(logp)/len(diff)
+        NLL = -LL
+        
+        return maskedNLL
