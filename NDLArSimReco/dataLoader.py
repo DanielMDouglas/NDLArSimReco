@@ -126,8 +126,9 @@ class DataLoader (GenericDataLoader):
     data format.  It should be faster, since all but the needed information
     has been removed.
     """            
-    def load_image(self, event_id):
+    def load_image(self, eventIndex):
         # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
 
         hits_mask = self.currentFile['hits']['eventID'] == event_id
         self.hits_ev = self.currentFile['hits'][hits_mask]
@@ -135,6 +136,9 @@ class DataLoader (GenericDataLoader):
         edep_mask = self.currentFile['edep']['eventID'] == event_id
         self.edep_ev = self.currentFile['edep'][edep_mask]
 
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+        
         return self.hits_ev, self.edep_ev
 
 class classifierDataLoader (GenericDataLoader):

@@ -13,6 +13,7 @@ import random
 
 from NDLArSimReco.network import ConfigurableSparseNetwork
 from NDLArSimReco.dataLoader import DataLoader
+from NDLArSimReco.utils import sparseTensor
 
 import yaml
 import os
@@ -33,16 +34,17 @@ def main(args):
     infileList = manifest['testfilePath']
     dl = DataLoader(infileList, batchSize = 50)
 
-    dl.setFileLoadOrder()
+    dl.genFileLoadOrder()
 
-    hits, edep = next(dl.load())
+    hits, edep = next(dl.load(transform = sparseTensor.array_to_sparseTensor))
 
     net.eval()
     prediction = net(hits)
     predMean, predStd = net.criterion.feature_map(prediction)
 
     # Ereco = predMean.detach().numpy()
-    Ereco = predMean.detach().numpy() + 0.773*predStd.detach().numpy()
+    # Ereco = predMean.detach().numpy() + 0.773*predStd.detach().numpy()
+    Ereco = predMean.detach().numpy()
     
     # nDropoutPredictions = 10
 

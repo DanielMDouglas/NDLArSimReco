@@ -12,6 +12,8 @@ nEpochs: 2
 
 layers:
 
+- type: Scaling
+  scalingFactor: 0.05
 - type: MConvolution
   kernel_size: 7
   stride: 1
