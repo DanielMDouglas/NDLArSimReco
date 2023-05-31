@@ -15,10 +15,10 @@ from NDeventDisplay.voxelize import voxelize
 from . import detector
 
 class GenericDataLoader:
-    def __init__(self, infileList, batchSize = 10):
+    def __init__(self, infileList, batchSize = 10, sequentialLoad = False):
         self.fileList = infileList
-
         self.batchSize = batchSize
+        self.sequential = sequentialLoad
 
         # This is a bit specific...
         # How to generically find the number of images?
@@ -42,9 +42,12 @@ class GenericDataLoader:
         # set the order in which the files will be parsed
         # this should be redone at the beginning of every epoch
         nFiles = len(self.fileList)
-        self.fileLoadOrder = np.random.choice(nFiles,
-                                              size = nFiles,
-                                              replace = False)
+        if self.sequential:
+            self.fileLoadOrder = np.arange(nFiles)
+        else:
+            self.fileLoadOrder = np.random.choice(nFiles,
+                                                  size = nFiles,
+                                                  replace = False)
     def setFileLoadOrder(self, fileLoadOrder):
         """
         Setter method for the file load order
@@ -83,9 +86,12 @@ class GenericDataLoader:
         # This should be redone after each file is loaded
         # self.loadOrder = np.arange(self.t0_grp.shape[0])
         nImages = len(np.unique(self.currentFile['evinfo']['eventID']))
-        self.sampleLoadOrder = np.random.choice(nImages,
-                                                size = nImages,
-                                                replace = False)
+        if self.sequential:
+            self.sampleLoadOrder = np.arange(nImages)
+        else:
+            self.sampleLoadOrder = np.random.choice(nImages,
+                                                    size = nImages,
+                                                    replace = False)
 
     def load(self, transform = None):
         for fileIndex in self.fileLoadOrder:

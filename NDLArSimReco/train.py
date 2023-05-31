@@ -46,10 +46,10 @@ def main(args):
         except IOError:
             print ("could not load from checkpoint!")
     elif any(net.log_manager.entries):
-            latestCheckpoint = net.log_manager.entries[-1]
-            latestCheckpoint.load()
+        latestCheckpoint = net.log_manager.entries[-1]
+        latestCheckpoint.load()
 
-            print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
+        print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
             
     print ("training...")
     net.trainLoop(dl)
