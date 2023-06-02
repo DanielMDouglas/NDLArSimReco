@@ -125,12 +125,12 @@ def main(args):
                                      dtype = output_dtypes['inference'])
 
             inference_arr['eventID'] = evIndex*np.ones(len(output), dtype = "u4")
-            inference_arr['x'] = output.coordinates.detach().numpy()[:,1]
-            inference_arr['y'] = output.coordinates.detach().numpy()[:,2]
-            inference_arr['z'] = output.coordinates.detach().numpy()[:,3]
+            inference_arr['x'] = output.coordinates.detach().cpu().numpy()[:,1]
+            inference_arr['y'] = output.coordinates.detach().cpu().numpy()[:,2]
+            inference_arr['z'] = output.coordinates.detach().cpu().numpy()[:,3]
 
-            inference_arr['dE'] = inference[0].detach().numpy()
-            inference_arr['dE_err'] = inference[1].detach().numpy()
+            inference_arr['dE'] = inference[0].detach().cpu().numpy()
+            inference_arr['dE_err'] = inference[1].detach().cpu().numpy()
 
             write_to_output(outfile, hits, edep, inference_arr, evinfo)
 
