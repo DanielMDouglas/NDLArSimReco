@@ -30,6 +30,7 @@ lossDict = {'NLL': loss.NLL,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
             'NLL_voxProp': loss.NLL_voxProp,
+            'CrossEntropy': loss.CrossEntropy,
             }
 
 def init_layers(layerDictList, in_feat, D):
@@ -59,6 +60,16 @@ def init_layers(layerDictList, in_feat, D):
                 stride = int(layerDict['stride']),
                 dimension = D,
             )
+        elif layerDict['type'] == 'MAvgPooling':
+            layer = ME.MinkowskiAvgPooling(
+                kernel_size = int(layerDict['kernel_size']),
+                stride = int(layerDict['stride']),
+                dimension = D,
+            )
+        elif layerDict['type'] == 'MGlobalMaxPooling':
+            layer = ME.MinkowskiGlobalMaxPooling()
+        elif layerDict['type'] == 'MGlobalAvgPooling':
+            layer = ME.MinkowskiGlobalAvgPooling()
         elif layerDict['type'] == 'MLinear':
             layer_out_feat = int(layerDict['out_feat'])
             layer = ME.MinkowskiLinear(
@@ -75,6 +86,13 @@ def init_layers(layerDictList, in_feat, D):
             layer = uresnet_layers.UResNet(
                 layer_in_feat,
                 layer_out_feat,
+                int(layerDict['depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'ResNetEncoder':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.ResNetEncoder(
+                layer_in_feat,
                 int(layerDict['depth']),
             )
             layer_in_feat = layer_out_feat
@@ -105,6 +123,8 @@ def init_layers(layerDictList, in_feat, D):
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'Scaling':
             layer = blocks.Scaling(float(layerDict['scalingFactor']))
+        elif layerDict['type'] == 'FeatureSelect':
+            layer = blocks.Scaling(float(layerDict['featureColumn']))
 
         yield layer
         
@@ -221,7 +241,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
             else:
-                pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = sparseTensor.array_to_sparseTensor)),
+                transform = sparseTensor.transformFactory[self.manifest['transform']]
+                pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                                  total = dataLoader.batchesPerEpoch)
                 for j, (hits, edep) in pbar:
                     if j < self.n_iter:
