@@ -18,6 +18,16 @@ class Scaling(nn.Module):
         input.features[:] *= self.scalar
         return input
 
+class FeatureSelect(nn.Module):
+    def __init__(self, featureColumn):
+        super(FeatureSelect, self).__init__()
+
+        self.featureColumn = featureColumn
+
+    def forward(self, input):
+        input.features = input.features[:,self.featureColumn]
+        return input
+
 class ResNetBlock(torch.nn.Module):
     def __init__(self, in_features, out_features, name = 'resBlock'):
         super(ResNetBlock, self).__init__()

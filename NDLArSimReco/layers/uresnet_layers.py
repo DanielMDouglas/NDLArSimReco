@@ -388,6 +388,61 @@ class UResNet(torch.nn.Module):
         
         return out
 
+class ResNetEncoder(torch.nn.Module):
+    def __init__(self, in_features, depth = 2, nFilters = 16, name='uresnet'):
+        super(ResNetEncoder, self).__init__()
+
+        self.depth = depth # number of pool/unpool layers, not including input + output
+        self.nFilters = nFilters
+        self.in_features = in_features
+        
+        self.input_block = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = self.in_features,
+                out_channels = self.nFilters,
+                kernel_size = 3,
+                stride = 1,
+                dimension = 3,
+            ) 
+        )
+
+        self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
+                                for i in range(self.depth)]
+        
+        self.encoding_layers = []
+
+        self.encoding_blocks = []
+        
+        for i in range(self.depth):
+            self.encoding_layers.append(
+                ME.MinkowskiConvolution(
+                    in_channels = self.featureSizesEnc[i][0],
+                    out_channels = self.featureSizesEnc[i][1],
+                    kernel_size = 2,
+                    stride = 2,
+                    dimension = 3)
+            )
+            self.encoding_blocks.append(
+                ResNetBlock(self.featureSizesEnc[i][1],
+                            self.featureSizesEnc[i][1])
+            )
+        self.encoding_layers = nn.Sequential(*self.encoding_layers)
+        self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
+
+    def forward(self, x):
+        encodingFeatures = []
+        coordKeys = []
+
+        out = self.input_block(x)
+        for i in range(self.depth):
+            encodingFeatures.append(Identity()(out))
+            coordKeys.append(out.coordinate_map_key)
+
+            out = self.encoding_layers[i](out)
+            out = self.encoding_blocks[i](out)
+
+        return out
+
 class UResNet_dropout(torch.nn.Module):
     def __init__(self, in_features, out_features, depth = 2, nFilters = 16, dropout_depth = 2, name='uresnet_dropout'):
         super(UResNet_dropout, self).__init__()
