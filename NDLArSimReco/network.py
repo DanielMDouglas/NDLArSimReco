@@ -124,7 +124,7 @@ def init_layers(layerDictList, in_feat, D):
         elif layerDict['type'] == 'Scaling':
             layer = blocks.Scaling(float(layerDict['scalingFactor']))
         elif layerDict['type'] == 'FeatureSelect':
-            layer = blocks.Scaling(float(layerDict['featureColumn']))
+            layer = blocks.FeatureSelect(layerDict['featureColumns'])
 
         yield layer
         

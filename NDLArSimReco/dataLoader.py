@@ -159,6 +159,25 @@ class ClassifierDataLoader (GenericDataLoader):
                                           
         return self.inference_ev, self.evinfo_ev
 
+
+class ClassifierDataLoaderGT (GenericDataLoader):
+    """
+    This instance of the DataLoader class is mean for training a classifier
+    network.  It should yield inferred edep-sim images (possibly G.T. images
+    as well), alongside the true primary particle type
+    """
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+                                          
+        return self.edep_ev, self.evinfo_ev
+
         
 class RawDataLoader (GenericDataLoader):
     """
@@ -302,6 +321,7 @@ class RawDataLoader (GenericDataLoader):
 class DataLoaderFactoryClass:
     map =  {'DataLoader': DataLoader,
             'ClassifierDataLoader': ClassifierDataLoader,
+            'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
             'RawDataLoader': RawDataLoader,
             }
     def __getitem__(self, req):

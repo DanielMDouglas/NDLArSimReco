@@ -142,4 +142,6 @@ class CrossEntropy (loss):
         return truth
         
     def loss(self, truth, output):
+        # print ("output", output)
+        # print ("truth", truth)
         return nn.CrossEntropyLoss()(output, truth)
