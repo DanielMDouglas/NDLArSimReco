@@ -6,7 +6,8 @@ import random
 # random.seed(12)
 
 from NDLArSimReco.network import ConfigurableSparseNetwork
-from NDLArSimReco.dataLoader import DataLoader
+# from NDLArSimReco.dataLoader import DataLoader
+from NDLArSimReco.dataLoader import dataLoaderFactory
 
 import yaml
 import os
@@ -16,7 +17,9 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
+    # net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
+    # net = ConfigurableSparseNetwork(in_feat=2, D=3, manifest = manifest).to(device)
 
     infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
@@ -28,7 +31,9 @@ def main(args):
         print ("loading files from list", infileList)
 
     print ("initializing data loader...")
-    dl = DataLoader(infileList, batchSize = manifest['batchSize'])
+    # dl = DataLoader(infileList, batchSize = manifest['batchSize'])
+    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+                                                   batchSize = manifest['batchSize'])
     net.log_manager.dataLoader = dl
     
     if args.force:

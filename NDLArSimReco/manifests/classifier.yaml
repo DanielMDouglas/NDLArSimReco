@@ -1,0 +1,318 @@
+batchSize: 128
+checkpoints: []
+layers:
+# - type: ResNetEncoder
+#   depth: 4
+#   out_feat: 256
+
+- type: FeatureSelect
+  featureColumns: 
+  - 0
+
+- type: MConvolution
+  out_feat: 16
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 16
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 16
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 16
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 16
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 32
+  kernel_size: 3
+  stride: 2
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 32
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 32
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 32
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 32
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 48
+  kernel_size: 3
+  stride: 2
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 48
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 48
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 48
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 48
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 2
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 64
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 80
+  kernel_size: 3
+  stride: 2
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 80
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 80
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 80
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 80
+  kernel_size: 3
+  stride: 1
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 96
+  kernel_size: 3
+  stride: 2
+- type: MMaxPooling
+  kernel_size: 2
+  stride: 2
+
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 96
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 96
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 96
+  kernel_size: 3
+  stride: 1
+- type: MBatchNorm
+- type: MReLU
+- type: MConvolution
+  out_feat: 96
+  kernel_size: 3
+  stride: 1
+
+- type: MGlobalMaxPooling
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 256
+- type: MLinear
+  out_feat: 5
+
+# - type: MConvolution
+#   out_feat: 16
+#   kernel_size: 3
+#   stride: 1
+# - type: MConvolution
+#   out_feat: 16
+#   kernel_size: 3
+#   stride: 1
+# - type: MConvolution
+#   out_feat: 16
+#   kernel_size: 3
+#   stride: 1
+
+# - type: MConvolution
+#   out_feat: 16
+#   kernel_size: 3
+#   stride: 1
+# - type: MBatchNorm
+# - type: MReLU
+
+# - type: MAvgPooling
+#   kernel_size: 2
+#   stride: 2
+
+# - type: MConvolution
+#   out_feat: 32
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MConvolution
+#   out_feat: 32
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MAvgPooling
+#   kernel_size: 2
+#   stride: 2
+
+# - type: MConvolution
+#   out_feat: 48
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MConvolution
+#   out_feat: 48
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MAvgPooling
+#   kernel_size: 2
+#   stride: 2
+
+# - type: MConvolution
+#   out_feat: 64
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MConvolution
+#   out_feat: 64
+#   kernel_size: 3
+#   stride: 3
+# - type: MReLU
+# - type: MBatchNorm
+
+# - type: MGlobalAvgPooling
+#   kernel_size: 2
+#   stride: 2
+# - type: MLinear
+#   out_feat: 256
+# - type: MLinear
+#   out_feat: 256
+# - type: MLinear
+#   out_feat: 5
+
+loss: CrossEntropy
+lr: 0.01
+nEpochs: 40
+dataLoader: ClassifierDataLoader
+transform: array_to_sparseTensor_class
+outdir: /scratch/dougl215/classifier_test
+testfilePath:
+- /home/dan/studies/NDLArSimReco/NDLArSimReco/samples/LE_singleParticle/pared_single_particle_fca09119-24a8-4730-b4f4-4782c4b7add0.h5
+trainfilePath:
+- /sdf/group/neutrino/dougl215/classifierSamples/mix/inference

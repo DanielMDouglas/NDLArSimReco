@@ -15,6 +15,9 @@ class loss:
         """
         feature = outputSparseTensor.features[:,0]
         return feature,
+    def truth_map(self, truth):
+        truthTensor = truth.features[:,0]
+        return truthTensor
     def loss(self, truth, *mappedFeatures):
         """
         Each subclass implements a loss function which
@@ -27,8 +30,7 @@ class loss:
         """
         Compose the loss function with the feature map
         """
-        truthTensor = truth.features[:,0]
-        return self.loss(truthTensor, *self.feature_map(output))
+        return self.loss(self.truth_map(truth), *self.feature_map(output))
 
 class MSE_stock (loss): 
     def loss(self, truth, pred):
@@ -131,3 +133,15 @@ class NLL_voxProp (loss):
         NLL = -LL
         
         return maskedNLL
+
+class CrossEntropy (loss):
+    def feature_map(self, outputTensor):
+        return outputTensor.features,
+
+    def truth_map(self, truth):
+        return truth
+        
+    def loss(self, truth, output):
+        # print ("output", output)
+        # print ("truth", truth)
+        return nn.CrossEntropyLoss()(output, truth)

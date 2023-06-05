@@ -15,8 +15,29 @@ class Scaling(nn.Module):
         self.scalar = scalingFactor
 
     def forward(self, input):
-        input.features[:] *= self.scalar
-        return input
+        features = input.features
+        newTensor = ME.SparseTensor(features = features*self.scalar,
+                                    coordinate_map_key = input.coordinate_map_key,
+                                    coordinate_manager = input.coordinate_manager,
+                                    )
+        return newTensor
+
+class FeatureSelect(nn.Module):
+    def __init__(self, featureColumns):
+        super(FeatureSelect, self).__init__()
+
+        self.featureColumns = [int(i) for i in featureColumns]
+
+    def forward(self, input):
+        # if len(self.featureColumns) == 1:
+        #     selectedFeatures = input.features[:,self.featureColumns[0]]
+        # else:
+        selectedFeatures = input.features[:,self.featureColumns]
+        newTensor = ME.SparseTensor(features = selectedFeatures,
+                                    coordinate_map_key = input.coordinate_map_key,
+                                    coordinate_manager = input.coordinate_manager,
+                                    )
+        return newTensor
 
 class ResNetBlock(torch.nn.Module):
     def __init__(self, in_features, out_features, name = 'resBlock'):

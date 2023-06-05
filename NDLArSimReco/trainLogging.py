@@ -121,6 +121,9 @@ class LogManager:
         """
         return the loss time series
         """
+        # there is a bug when the number of batches per checkpoint
+        # is one.  This causes the entry loss series to have 1 dimension
+        # instead of 2.
         loss_series = np.empty((0,3))
         for log_entry in self.entries:
             loss_series = np.concatenate([loss_series, log_entry.get_loss()])
