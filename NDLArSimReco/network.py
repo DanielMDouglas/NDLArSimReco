@@ -129,10 +129,12 @@ def init_layers(layerDictList, in_feat, D):
         yield layer
         
 class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
-    def __init__(self, in_feat, D, manifest, make_output = True):
+    def __init__(self, D, manifest, make_output = True):
         super(ConfigurableSparseNetwork, self).__init__(D)
 
         self.manifest = loadManifestDict(manifest)
+
+        in_feat = self.manifest['in_feat']
 
         # make the output data structure
         if make_output:
