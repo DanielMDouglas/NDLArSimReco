@@ -398,7 +398,7 @@ class DataLoaderFactoryClass:
     map =  {'DataLoader': DataLoader,
             'ClassifierDataLoader': ClassifierDataLoader,
             'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
-            'ClassifierDataLoaderLNDSM': ClassifierDataLoader,
+            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
             'RawDataLoader': RawDataLoader,
             'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
             }
