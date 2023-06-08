@@ -86,6 +86,7 @@ def init_layers(layerDictList, in_feat, D):
             layer = uresnet_layers.UResNet(
                 layer_in_feat,
                 layer_out_feat,
+                int(layerDict['kernel_size']),
                 int(layerDict['depth']),
             )
             layer_in_feat = layer_out_feat
@@ -96,11 +97,28 @@ def init_layers(layerDictList, in_feat, D):
                 int(layerDict['depth']),
             )
             layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'ResNetBlock':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = blocks.ResNetBlock(
+                layer_in_feat,
+                layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'DownSample':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = blocks.DownSample(
+                layer_in_feat,
+                layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
+            )
+            layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'UResNetDropout':
             layer_out_feat = int(layerDict['out_feat'])
             layer = uresnet_layers.UResNet_dropout(
                 layer_in_feat,
                 layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
                 depth = int(layerDict['depth']),
                 dropout_depth = int(layerDict['dropout_depth']),
             )
@@ -124,7 +142,11 @@ def init_layers(layerDictList, in_feat, D):
         elif layerDict['type'] == 'Scaling':
             layer = blocks.Scaling(float(layerDict['scalingFactor']))
         elif layerDict['type'] == 'FeatureSelect':
+            layer_out_feat = len(layerDict['featureColumns'])
             layer = blocks.FeatureSelect(layerDict['featureColumns'])
+        elif layerDict['type'] == 'Threshold':
+            layer = blocks.Threshold(layerDict['threshold'],
+                                     layerDict['featureColumn'])
 
         yield layer
         
@@ -227,10 +249,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
-        # optimizer = optim.SGD(self.parameters(), 
-        #                       lr = self.lr, 
-        #                       momentum = 0.9)
-        # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma = 0.9)
 
         self.train()
         
@@ -246,7 +264,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 transform = sparseTensor.transformFactory[self.manifest['transform']]
                 pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                                  total = dataLoader.batchesPerEpoch)
-                for j, (hits, edep) in pbar:
+                for j, (inpt, truth) in pbar:
                     if j < self.n_iter:
                         continue
                     else:
@@ -257,15 +275,15 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                          profile_memory = True,
                                          record_shapes = True) as prof:
                                 with record_function("model_inference"):
-                                    output = self(hits)
+                                    output = self(inpt)
                                     
                             print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                             row_limit = 10))
                     
                         else:
-                            output = self.forward(hits)
+                            output = self.forward(inpt)
 
-                        loss = self.criterion(output, edep)
+                        loss = self.criterion(output, truth)
  
                         pbarMessage = " ".join(["epoch:",
                                                str(self.n_epoch),
@@ -291,8 +309,6 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         
                 self.n_epoch += 1
                 self.n_iter = 0
-
-            # scheduler.step()
 
         self.log_manager.log_state()
         print ("final loss:", loss.item())        
@@ -342,7 +358,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         lossList = []
         pbar = tqdm.tqdm(enumerate(dataLoader.load()),
                          total = evalBatches)
-        for i, (larpix, edep) in pbar:
+        for i, (inpt, truth) in pbar:
             if i >= evalBatches:
                 break # we're done here
 
@@ -351,15 +367,15 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                              profile_memory = True,
                              record_shapes = True) as prof:
                     with record_function("model_inference"):
-                        prediction = self(larpix)
+                        prediction = self(inpt)
 
                 print(prof.key_averages().table(sort_by="self_cuda_time_total", 
                                                 row_limit = 10))
 
             else:
-                prediction = self(larpix)
+                prediction = self(inpt)
 
-            loss = self.criterion(prediction, edep)
+            loss = self.criterion(prediction, truth)
 
             pbar.set_description("loss: "+str(round(loss.item(), 4)))
 

@@ -141,6 +141,53 @@ class DataLoader (GenericDataLoader):
         
         return self.hits_ev, self.edep_ev
 
+class DataLoaderWithEvinfo (GenericDataLoader):
+    """
+    This version of the DataLoader class is meant to parse the pared down
+    data format.  It should be faster, since all but the needed information
+    has been removed.
+    """            
+    def load(self, transform = None):
+        for fileIndex in self.fileLoadOrder:
+            self.loadNextFile(fileIndex)
+            if len(self.sampleLoadOrder) == 0: 
+                self.genSampleLoadOrder()
+            hits = []
+            edeps = []
+            evinfos = []
+            for imgIndex in self.sampleLoadOrder:
+                theseHits, theseEdeps, theseEvinfos = self.load_image(imgIndex)
+                if len(theseHits) == 0:
+                    continue
+                else:
+                    hits.append(theseHits)
+                    edeps.append(theseEdeps)
+                    evinfos.append(theseEvinfos)
+
+                if len(hits) == self.batchSize:
+                    if transform:
+                        yield transform(hits, edeps, evinfos)
+                    else:
+                        yield hits, edeps, evinfos
+                    hits = []
+                    edeps = []
+                    evinfos = []
+            self.sampleLoadOrder = np.empty(0,)
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        hits_mask = self.currentFile['hits']['eventID'] == event_id
+        self.hits_ev = self.currentFile['hits'][hits_mask]
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+        
+        return self.hits_ev, self.edep_ev, self.evinfo_ev
+
 class ClassifierDataLoader (GenericDataLoader):
     """
     This instance of the DataLoader class is mean for training a classifier
@@ -178,6 +225,23 @@ class ClassifierDataLoaderGT (GenericDataLoader):
                                           
         return self.edep_ev, self.evinfo_ev
 
+class ClassifierDataLoaderLNDSM (GenericDataLoader):
+    """
+    This instance of the DataLoader class is mean for training a classifier
+    network.  It should yield larnd-sim images, alongside the true primary particle type
+    """
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        hits_mask = self.currentFile['hits']['eventID'] == event_id
+        self.hits_ev = self.currentFile['hits'][hits_mask]
+
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+
+        return self.hits_ev, self.evinfo_ev
+
         
 class RawDataLoader (GenericDataLoader):
     """
@@ -185,16 +249,27 @@ class RawDataLoader (GenericDataLoader):
     larpix + voxels format.  It has much more information than is needed
     for 3D point cloud inference, so it is not ideal for training 
     """
-    def __init__(self, infileList, batchSize = 10):
+    def __init__(self, infileList, batchSize = 10, detectorConfig = "nd-lar"):
+        print (detectorConfig)
         self.fileList = infileList
 
         print ("building geometry lookup...")
-        self.geom_dict = larpix_layout_to_dict("multi_tile_layout-3.0.40",
-                                               save_dict = False)
-
+        if detectorConfig == 'nd-lar':
+            self.geom_dict = larpix_layout_to_dict("multi_tile_layout-3.0.40",
+                                                   save_dict = False)
+            self.switch_xz = True
+        elif detectorConfig == '2x2':
+            self.geom_dict = larpix_layout_to_dict("multi_tile_layout-2.3.16",
+                                                   save_dict = False)
+            self.switch_xz = False
+        
         print ("building run configuration...")
-        self.run_config = util.get_run_config("ndlar-module.yaml",
-                                              use_builtin = True)
+        if detectorConfig == 'nd-lar':
+            self.run_config = util.get_run_config("ndlar-module.yaml",
+                                                  use_builtin = True)
+        elif detectorConfig == '2x2':
+            self.run_config = util.get_run_config("2x2.yaml",
+                                                  use_builtin = True)
 
         self.pixelPitch = 0.38
         
@@ -281,7 +356,8 @@ class RawDataLoader (GenericDataLoader):
                                                            packets_ev,
                                                            self.geom_dict,
                                                            self.run_config,
-                                                           drift_model = 2)
+                                                           drift_model = 2,
+                                                           switch_xz = self.switch_xz)
         hits_ev = np.array([hitX, hitY, hitZ, dQ])
         
         vox_ev_id = np.unique(EvtParser.packet_to_eventid(self.assn,
@@ -322,7 +398,9 @@ class DataLoaderFactoryClass:
     map =  {'DataLoader': DataLoader,
             'ClassifierDataLoader': ClassifierDataLoader,
             'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
+            'ClassifierDataLoaderLNDSM': ClassifierDataLoader,
             'RawDataLoader': RawDataLoader,
+            'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
             }
     def __getitem__(self, req):
         if req in self.map:

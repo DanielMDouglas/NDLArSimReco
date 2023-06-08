@@ -39,8 +39,24 @@ class FeatureSelect(nn.Module):
                                     )
         return newTensor
 
+class Threshold(nn.Module):
+    def __init__(self, thresholdValue, featureColumn):
+        super(Threshold, self).__init__()
+
+        self.thresholdValue = thresholdValue
+        self.featureColumn = int(featureColumn)
+
+    def forward(self, input):
+        cutFeature = input.features[:, self.featureColumn]
+        thresholdMask = ( cutFeature > self.thresholdValue )
+
+        newTensor = ME.SparseTensor(features = input.features[thresholdMask],
+                                    coordinates = input.coordinates[thresholdMask],
+                                    )
+        return newTensor
+
 class ResNetBlock(torch.nn.Module):
-    def __init__(self, in_features, out_features, name = 'resBlock'):
+    def __init__(self, in_features, out_features, kernel_size, name = 'resBlock'):
         super(ResNetBlock, self).__init__()
 
         if in_features != out_features:
@@ -48,22 +64,21 @@ class ResNetBlock(torch.nn.Module):
         else:
             self.residual = Identity()
         
+        self.norm1 = ME.MinkowskiBatchNorm(in_features)
+        self.act1 = ME.MinkowskiReLU()
         self.conv1 = ME.MinkowskiConvolution(in_channels = in_features,
                                              out_channels = out_features,
-                                             kernel_size = 3,
+                                             kernel_size = kernel_size,
                                              stride = 1,
                                              dimension = 3)
-        self.act1 = ME.MinkowskiReLU()
-        self.norm1 = ME.MinkowskiBatchNorm(in_features)
-        # self.norm1 = Identity()
+
+        self.norm2 = ME.MinkowskiBatchNorm(out_features)
+        self.act2 = ME.MinkowskiReLU()
         self.conv2 = ME.MinkowskiConvolution(in_channels = out_features,
                                              out_channels = out_features,
-                                             kernel_size = 3,
+                                             kernel_size = kernel_size,
                                              stride = 1,
                                              dimension = 3)
-        self.act2 = ME.MinkowskiReLU()
-        self.norm2 = ME.MinkowskiBatchNorm(out_features)
-        # self.norm2 = Identity()
         
     def forward(self, x):
 
@@ -72,5 +87,85 @@ class ResNetBlock(torch.nn.Module):
         out = self.conv1(self.act1(self.norm1(x)))
         out = self.conv2(self.act2(self.norm2(out)))
         out += residual
+
+        return out
+
+class DropoutBlock(torch.nn.Module):
+    def __init__(self, in_features, out_features, kernel_size, name = 'DropoutBlock'):
+        super(DropoutBlock, self).__init__()
+
+        self.conv1 = ME.MinkowskiConvolution(in_channels = in_features,
+                                             out_channels = out_features,
+                                             kernel_size = kernel_size,
+                                             stride = 1,
+                                             dimension = 3)
+        self.dropout1 = ME.MinkowskiDropout()
+        self.norm1 = ME.MinkowskiBatchNorm(out_features)
+        self.act1 = ME.MinkowskiReLU()
+
+        self.conv2 = ME.MinkowskiConvolution(in_channels = out_features,
+                                             out_channels = out_features,
+                                             kernel_size = kernel_size,
+                                             stride = 1,
+                                             dimension = 3)
+        self.dropout2 = ME.MinkowskiDropout()
+        self.norm2 = ME.MinkowskiBatchNorm(out_features)
+        self.act2 = ME.MinkowskiReLU()
+        
+    def forward(self, x):
+
+        out = self.act1(self.norm1(self.dropout1(self.conv1(x))))
+        out = self.act2(self.norm2(self.dropout2(self.conv2(out))))
+
+        return out
+
+class DownSample(torch.nn.Module):
+    def __init__(self, in_features, out_features, kernel_size, dropout = False, name = 'DownSample'):
+        super(DownSample, self).__init__()
+        
+        self.norm = ME.MinkowskiBatchNorm(in_features)
+        self.act = ME.MinkowskiReLU()
+        self.conv = ME.MinkowskiConvolution(in_channels = in_features,
+                                            out_channels = out_features,
+                                            kernel_size = kernel_size,
+                                            stride = kernel_size,
+                                            dimension = 3)
+
+        self.useDropout = dropout
+        self.dropout = ME.MinkowskiDropout()
+        
+    def forward(self, x):
+        
+        out = self.conv(self.act(self.norm(x)))
+        if self.useDropout:
+            out = self.dropout(out)
+
+        return out
+
+class UpSample(torch.nn.Module):
+    def __init__(self, in_features, out_features, kernel_size, dropout = False, name = 'DownSample'):
+        super(UpSample, self).__init__()
+        
+        self.norm = ME.MinkowskiBatchNorm(in_features)
+        self.act = ME.MinkowskiReLU()
+        self.conv = ME.MinkowskiConvolutionTranspose(
+            in_channels = in_features,
+            out_channels = out_features,
+            kernel_size = kernel_size,
+            stride = kernel_size,
+            dimension = 3,
+        )
+
+        self.useDropout = dropout
+        self.dropout = ME.MinkowskiDropout()
+        
+    def forward(self, x, cmk = None):
+        
+        if cmk:
+            out = self.conv(self.act(self.norm(x)), cmk)
+        else:
+            out = self.conv(self.act(self.norm(x)))
+        if self.useDropout:
+            out = self.dropout(out)
 
         return out

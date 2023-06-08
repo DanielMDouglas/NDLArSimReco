@@ -91,7 +91,7 @@ def write_to_output(outfile, evHits, evEdep, evEv):
     outfile['evinfo'][nEv_prev:] = evEv
 
 def main(args):
-    dl = RawDataLoader([args.infileList])
+    dl = RawDataLoader([args.infileList], detectorConfig = args.config)
     outfile = h5py.File(args.outfile, 'w')
 
     for key, value in output_dtypes.items():
@@ -141,7 +141,8 @@ def main(args):
         print ("nEdep", nEdep_ev)
         print ("nEv", nEv_ev)
 
-        if (nHits_ev > 0) and (nEdep_ev > 0) and (nEv_ev == 1):
+        # if (nHits_ev > 0) and (nEdep_ev > 0) and (nEv_ev == 1):
+        if (nHits_ev > 0) and (nEdep_ev > 0):
             print ("writing")
             write_to_output(outfile, evHits, evEdep, evEv)
 
@@ -158,6 +159,12 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--infileList', type = str,
                         default = "/home/dan/studies/NDLArSimReco/NDLArSimReco/manifests/localTestManifest.yaml",
                         help = "input")
+    parser.add_argument('-s', '--swapaxes',
+                        action = 'store_true',
+                        help = 'whether or not to swap the x and z axes of the reconstructed hit positions.  By default, this is true.  Including this flag will skip this step and assume that the edep-sim segments are already in the larpix coordinate system.')
+    parser.add_argument('-c', '--config', type = str,
+                        default = "nd-lar",
+                        help = "detector config (default: nd-lar)")
     parser.add_argument('-o', '--outfile', type = str,
                         default = "testout.h5",
                         help = "output")

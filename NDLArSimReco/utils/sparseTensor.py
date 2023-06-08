@@ -185,11 +185,49 @@ def array_to_sparseTensor_class_gt(inferenceList, evInfoList):
     PIDlabel = torch.LongTensor(PIDlabel).to(device)
     
     return inference, PIDlabel
+    
+def array_to_sparseTensor_class_lndsm(hitList, evInfoList):
+    ME.clear_global_coordinate_manager()
 
+    hitCoordTensors = []
+    hitFeatureTensors = []
+    
+    LABELS = [11,22,13,211,2212]
+    PIDlabel = []
+    
+    for hit, evinfo in zip(hitList, evInfoList):
+
+        # print ("this is one hit", hit)
+        hitX = hit['x']
+        hitY = hit['y']
+        hitZ = hit['z']
+        hitQ = hit['q']
+        # infDE_err = hit['dE_err']
+
+        hitCoords = torch.FloatTensor(np.array([hitX, hitY, hitZ])).T
+        hitFeature = torch.FloatTensor(np.array([hitQ])).T
+
+        hitCoordTensors.append(hitCoords)
+        hitFeatureTensors.append(hitFeature)
+
+        PIDlabel.append(LABELS.index(evinfo['primaryPID']))
+
+    hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors,
+                                                    hitFeatureTensors,
+                                                    dtype = torch.int32)
+
+    hitST = ME.SparseTensor(features = hitFeature.to(device),
+                            coordinates = hitCoords.to(device))
+
+    PIDlabel = torch.LongTensor(PIDlabel).to(device)
+
+    return hitST, PIDlabel
+    
 class TransformFactoryClass:
     map = {'array_to_sparseTensor': array_to_sparseTensor,
            'array_to_sparseTensor_class': array_to_sparseTensor_class,
            'array_to_sparseTensor_class_gt': array_to_sparseTensor_class_gt,
+           'array_to_sparseTensor_class_lndsm': array_to_sparseTensor_class_lndsm,
            }
     def __getitem__(self, req):
         if req in self.map:
