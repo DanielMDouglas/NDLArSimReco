@@ -110,7 +110,8 @@ def init_layers(layerDictList, in_feat, D):
             layer = blocks.DownSample(
                 layer_in_feat,
                 layer_out_feat,
-                kernel_size = int(layerDict['kernel_size']),
+                # kernel_size = int(layerDict['kernel_size']),
+                kernel_size = 2,
             )
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'UResNetDropout':

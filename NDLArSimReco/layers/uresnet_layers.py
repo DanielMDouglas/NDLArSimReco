@@ -339,23 +339,23 @@ class UResNet(torch.nn.Module):
         self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
         for i in range(self.depth):
-            self.decoding_blocks.append(
-                nn.Sequential(
-                    ResNetBlock(2*self.featureSizesDec[i][0],
-                                self.featureSizesDec[i][0],
-                                self.kernel_size,
-                            ),
-                    ResNetBlock(self.featureSizesDec[i][0],
-                                self.featureSizesDec[i][0],
-                                self.kernel_size,
-                            ),
-                )
-            )
             self.decoding_layers.append(
                 UpSample(
                     in_features = self.featureSizesDec[i][0],
                     out_features = self.featureSizesDec[i][1],
                     kernel_size = 2,
+                )
+            )
+            self.decoding_blocks.append(
+                nn.Sequential(
+                    ResNetBlock(2*self.featureSizesDec[i][1],
+                                self.featureSizesDec[i][1],
+                                self.kernel_size,
+                            ),
+                    ResNetBlock(self.featureSizesDec[i][1],
+                                self.featureSizesDec[i][1],
+                                self.kernel_size,
+                            ),
                 )
             )
         self.decoding_layers = nn.Sequential(*self.decoding_layers)
