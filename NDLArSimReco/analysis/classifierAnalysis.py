@@ -16,6 +16,7 @@ import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
+import particle
 
 def main(args):
     with open(args.manifest) as mf:
@@ -36,10 +37,10 @@ def main(args):
         print ("loading files from list", infileList)
 
     print ("initializing data loader...")
-    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = manifest['batchSize'])
     # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-    #                                                batchSize = 10)
+    #                                                batchSize = manifest['batchSize'])
+    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+                                                   batchSize = 1)
     net.log_manager.dataLoader = dl
     
     print ("loading from checkpoint", args.checkpoint)
@@ -48,25 +49,60 @@ def main(args):
     net.eval()
 
     LABELS = [11,22,13,211,2212]
+    LaTeXlabels = ['$'+particle.Particle.from_pdgid(i).latex_name+'$' for i in LABELS]
 
+    inferences = []
+    true_labels = []
+    
     transform = sparseTensor.transformFactory[manifest['transform']]
     pbar = tqdm.tqdm(enumerate(dl.load(transform = transform)),
                      total = dl.batchesPerEpoch)
     for i, (inpt, truth) in pbar:
+        # if i > 1000:
+        #     break
+        
         output = net.forward(inpt)
         inference = torch.argmax(output.features, axis = 1)
-        print (output.features)
-        print (inference)
-        print (truth)
-        
-        print (net.criterion(output, truth))
-        
-        fig = plt.figure()
-        plt.hist2d(inference.numpy(), truth.numpy(),
-                   bins = (np.linspace(-0.5, 4.5, 6),
-                           np.linspace(-0.5, 4.5, 6),
-                           ))
-        plt.savefig('confusion.png')
+
+        inferences.append(inference.item())
+        true_labels.append(truth.item())
+
+    H, xedges, yedges = np.histogram2d(inferences, true_labels,
+                                       bins = (np.linspace(-0.5, 4.5, 6),
+                                               np.linspace(-0.5, 4.5, 6),
+                                               ))
+    H = H.T
+
+    fig = plt.figure()
+    plt.imshow(H, origin = 'upper',
+               extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]],
+               cmap = 'Blues')
+    fig.gca().tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+    fig.gca().xaxis.set_label_position('top')
+
+    plt.xticks(range(5), LaTeXlabels)
+    plt.yticks(range(5), LaTeXlabels[::-1])
+
+    plt.xlabel(r'Inferred Label')
+    plt.ylabel(r'True Label')
+    
+    print (H)
+    for i, row in enumerate(H):
+        for j, value in enumerate(row):
+            percent = int(100*value/sum(row))
+            text = str(percent)+'%\n('+str(int(value))+')'
+            if value > 0.6*np.max(H):
+                color = 'white'
+            else:
+                color = '#08306B'
+            plt.text(i, len(LABELS)-j-1,
+                     text,
+                     color = color,
+                     ha = 'center',
+                     va = 'center')
+    
+    # plt.colorbar()
+    plt.savefig(args.outfile)
         
         
 if __name__ == '__main__':
@@ -80,6 +116,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--checkpoint', type = str,
                         default = "",
                         help = "checkpoint file to start from",
+                        required = True)
+    parser.add_argument('-o', '--outfile', type = str,
+                        default = "",
+                        help = "output image path",
                         required = True)
     
     args = parser.parse_args()
