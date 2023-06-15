@@ -9,7 +9,7 @@ import numpy as np
 # np.random.seed(12)
 
 from NDLArSimReco.network import ConfigurableSparseNetwork
-from NDLArSimReco.dataLoader import DataLoader
+from NDLArSimReco.dataLoader import dataLoaderFactory
 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -34,12 +34,12 @@ def save_record(manifest, checkpointDict):
                             "testEval.dat"),
                outArray)
 
-def main(args):
+def main_old(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
+    net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
 
     epochs = np.unique([int(checkpoint.split('_')[-2]) for checkpoint in manifest['checkpoints']])
 
@@ -101,6 +101,38 @@ def main(args):
         valDict['lossInterval'] = lossInterval
 
     save_record(manifest, theseCheckpoints)
+def main(args):
+    with open(args.manifest) as mf:
+        manifest = yaml.load(mf, Loader = yaml.FullLoader)
+
+    print ("initializing network...")
+    net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
+
+    infilePath = manifest['testfilePath'] 
+    if os.path.isdir(infilePath[0]):
+        infileList = [os.path.join(infilePath[0], thisFile) 
+                      for thisFile in os.listdir(infilePath[0])]
+        print ("loading files from list", infileList)
+    else:
+        infileList = infilePath
+        print ("loading files from list", infileList)
+
+    print ("initializing data loader...")
+    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+                                                   batchSize = manifest['batchSize'])
+
+    for log_entry in net.log_manager.entries:
+        print ("reverting from log entry:", log_entry.outDir)
+        log_entry.load()
+        # net.load_checkpoint(log_entry.manifest['checkpointPath'])
+        print ("current model state:", net.state_dict()['network.1.encoding_blocks.0.0.conv1.kernel']) 
+
+        loss = net.evalLoop(dl, args.nBatches)
+
+        medianLoss = np.median(loss)
+        lossInterval = np.quantile(loss, (0.16, 0.84))
+
+        print (medianLoss, lossInterval)
     
 if __name__ == '__main__':
 

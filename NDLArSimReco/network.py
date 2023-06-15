@@ -29,7 +29,8 @@ lossDict = {'NLL': loss.NLL,
             'NLL_reluError': loss.NLL_reluError,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
-            'NLL_voxProp': loss.NLL_voxProp,
+            'voxOcc': loss.voxOcc,
+            'NLL_voxOcc': loss.NLL_voxOcc,
             'CrossEntropy': loss.CrossEntropy,
             }
 
@@ -105,12 +106,19 @@ def init_layers(layerDictList, in_feat, D):
                 kernel_size = int(layerDict['kernel_size']),
             )
             layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'ResNetEncoderBlock':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = blocks.ResNetEncoderBlock(
+                layer_in_feat,
+                layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
+            )
+            layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'DownSample':
             layer_out_feat = int(layerDict['out_feat'])
             layer = blocks.DownSample(
                 layer_in_feat,
                 layer_out_feat,
-                # kernel_size = int(layerDict['kernel_size']),
                 kernel_size = 2,
             )
             layer_in_feat = layer_out_feat
@@ -148,6 +156,9 @@ def init_layers(layerDictList, in_feat, D):
         elif layerDict['type'] == 'Threshold':
             layer = blocks.Threshold(layerDict['threshold'],
                                      layerDict['featureColumn'])
+        elif layerDict['type'] == 'VoxelOccupancyHead':
+            layer = blocks.VoxelOccupancyHead(layer_in_feat)
+            layer_in_feat = 4
 
         yield layer
         
@@ -338,7 +349,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(self.reportFile, 'w') as rf:
             rf.writelines(goodLines)
         
-    def evalLoop(self, dataLoader, nBatches = 50, evalMode = True):
+    def evalLoop(self, dataLoader, nBatches = 50, evalMode = 'eval'):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
@@ -349,15 +360,18 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         report = False
         # report = True
 
-        if evalMode:
+        if evalMode == 'eval':
             self.eval()
-        else:
+        elif evalMode == 'MCdropout':
+            self.MCdropout()
+        elif evalMode == 'train':
             self.train()
+        else:
+            raise Exception ("not a valid inference mode!")
         
-        dataLoader.setFileLoadOrder()
-
         lossList = []
-        pbar = tqdm.tqdm(enumerate(dataLoader.load()),
+        transform = sparseTensor.transformFactory[self.manifest['transform']]
+        pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                          total = evalBatches)
         for i, (inpt, truth) in pbar:
             if i >= evalBatches:
@@ -374,9 +388,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                                 row_limit = 10))
 
             else:
-                prediction = self(inpt)
+                output = self.forward(inpt)
 
-            loss = self.criterion(prediction, truth)
+            loss = self.criterion(output, truth)
 
             pbar.set_description("loss: "+str(round(loss.item(), 4)))
 

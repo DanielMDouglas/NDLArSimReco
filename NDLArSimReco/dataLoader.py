@@ -35,7 +35,7 @@ class GenericDataLoader:
 
         self.batchesPerEpoch = int(nImages/self.batchSize)
 
-        self.genFileLoadOrder()
+        self.fileLoadOrder = np.empty(0,)
         self.sampleLoadOrder = np.empty(0,)
 
     def genFileLoadOrder(self):
@@ -94,6 +94,8 @@ class GenericDataLoader:
                                                     replace = False)
 
     def load(self, transform = None):
+        if len(self.fileLoadOrder) == 0: 
+            self.genFileLoadOrder()
         for fileIndex in self.fileLoadOrder:
             self.loadNextFile(fileIndex)
             if len(self.sampleLoadOrder) == 0: 
@@ -116,6 +118,7 @@ class GenericDataLoader:
                     inputs = []
                     truths = []
             self.sampleLoadOrder = np.empty(0,)
+        self.fileLoadOrder = np.empty(0,)
 
     def load_image(imgIndex):
         return None, None

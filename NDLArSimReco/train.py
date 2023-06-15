@@ -18,8 +18,6 @@ def main(args):
 
     print ("initializing network...")
     net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
-    # net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest).to(device)
-    # net = ConfigurableSparseNetwork(in_feat=2, D=3, manifest = manifest).to(device)
 
     infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):

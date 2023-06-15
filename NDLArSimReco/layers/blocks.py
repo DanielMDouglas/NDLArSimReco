@@ -142,6 +142,26 @@ class DownSample(torch.nn.Module):
 
         return out
 
+class ResNetEncoderBlock(torch.nn.Module):
+    def __init__(self, in_features, out_features, kernel_size, dropout = False, name = 'ResNetEncoderBlock'):
+        super(ResNetEncoderBlock, self).__init__()
+
+        if dropout:
+            self.convBlock1 = DropoutBlock(in_features, in_features, kernel_size)
+            self.convBlock2 = DropoutBlock(in_features, in_features, kernel_size)
+        else:
+            self.convBlock1 = ResNetBlock(in_features, in_features, kernel_size)
+            self.convBlock2 = ResNetBlock(in_features, in_features, kernel_size)
+        
+        self.downSampleBlock = DownSample(in_features, out_features, 2, dropout = dropout)
+
+    def forward(self, x):
+        out = self.convBlock1(x)
+        out = self.convBlock2(out)
+        out = self.downSampleBlock(out)
+
+        return out
+
 class UpSample(torch.nn.Module):
     def __init__(self, in_features, out_features, kernel_size, dropout = False, name = 'DownSample'):
         super(UpSample, self).__init__()
@@ -169,3 +189,82 @@ class UpSample(torch.nn.Module):
             out = self.dropout(out)
 
         return out
+
+class VoxelOccupancyHead(torch.nn.Module):
+    def __init__(self, in_features, name = 'VoxelOccupancyHead'):
+        super(VoxelOccupancyHead, self).__init__()
+
+        self.in_features = in_features
+
+
+        valueBranchFilters = in_features*4
+        valueBranchKernelSize = 3
+        self.valueBranch = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = valueBranchFilters,
+                kernel_size = valueBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                valueBranchFilters,
+                valueBranchFilters,
+                valueBranchKernelSize,
+            ),
+            ResNetBlock(
+                valueBranchFilters,
+                valueBranchFilters,
+                valueBranchKernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = valueBranchFilters,
+                out_channels = 2,
+                kernel_size = valueBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+        occupancyBranchFilters = in_features*4
+        occupancyBranchKernelSize = 3
+        self.occupancyBranch = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = occupancyBranchFilters,
+                kernel_size = occupancyBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                occupancyBranchFilters,
+                occupancyBranchFilters,
+                occupancyBranchKernelSize,
+            ),
+            ResNetBlock(
+                occupancyBranchFilters,
+                occupancyBranchFilters,
+                occupancyBranchKernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = occupancyBranchFilters,
+                out_channels = 2,
+                kernel_size = occupancyBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+    def forward(self, x):
+        valueOut = self.valueBranch(x)
+        occupancyOut = self.occupancyBranch(x)
+
+        newTensor = ME.SparseTensor(features = torch.concat((valueOut.features,
+                                                             occupancyOut.features),
+                                                            axis = 1),
+                                    coordinate_map_key = x.coordinate_map_key,
+                                    coordinate_manager = x.coordinate_manager,
+        )
+
+        return newTensor
+
