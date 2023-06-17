@@ -37,10 +37,10 @@ def main(args):
         print ("loading files from list", infileList)
 
     print ("initializing data loader...")
-    # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-    #                                                batchSize = manifest['batchSize'])
     dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = 1)
+                                                   batchSize = manifest['batchSize'])
+    # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+    #                                                batchSize = 1)
     net.log_manager.dataLoader = dl
     
     print ("loading from checkpoint", args.checkpoint)
@@ -51,8 +51,10 @@ def main(args):
     LABELS = [11,22,13,211,2212]
     LaTeXlabels = ['$'+particle.Particle.from_pdgid(i).latex_name+'$' for i in LABELS]
 
-    inferences = []
-    true_labels = []
+    # inferences = []
+    # true_labels = []
+    inferences = np.empty((0,))
+    true_labels = np.empty((0,))
     
     transform = sparseTensor.transformFactory[manifest['transform']]
     pbar = tqdm.tqdm(enumerate(dl.load(transform = transform)),
@@ -62,10 +64,14 @@ def main(args):
         #     break
         
         output = net.forward(inpt)
-        inference = torch.argmax(output.features, axis = 1)
+        thisInference = torch.argmax(output.features, axis = 1)
 
-        inferences.append(inference.item())
-        true_labels.append(truth.item())
+        print ("loss", net.criterion(output, truth))
+        
+        # inferences.append(inference.item())
+        # true_labels.append(truth.item())
+        inferences = np.concatenate((inferences, thisInference))
+        true_labels = np.concatenate((true_labels, truth))
 
     H, xedges, yedges = np.histogram2d(inferences, true_labels,
                                        bins = (np.linspace(-0.5, 4.5, 6),
