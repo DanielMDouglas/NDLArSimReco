@@ -20,9 +20,11 @@ def main(args):
     net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
 
     infilePath = manifest['trainfilePath'] 
-    if os.path.isdir(infilePath[0]):
-        infileList = [os.path.join(infilePath[0], thisFile) 
-                      for thisFile in os.listdir(infilePath[0])]
+    if all(os.path.isdir(thisPath) for thisPath in infilePath):
+        infileList = sum(([os.path.join(thisPath, thisFile) 
+                           for thisFile in os.listdir(thisPath)]
+                           for thisPath in infilePath),
+                         start = [])
         print ("loading files from list", infileList)
     else:
         infileList = infilePath

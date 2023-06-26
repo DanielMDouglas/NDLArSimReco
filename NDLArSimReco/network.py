@@ -349,7 +349,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         with open(self.reportFile, 'w') as rf:
             rf.writelines(goodLines)
         
-    def evalLoop(self, dataLoader, nBatches = 50, evalMode = 'eval'):
+    def evalLoop(self, dataLoader, nBatches = 50, evalMode = 'eval', accuracy = False):
         """
         page through a test file, do forward calculation, evaluate loss and accuracy metrics
         do not update the model!
@@ -370,6 +370,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             raise Exception ("not a valid inference mode!")
         
         lossList = []
+        if accuracy:
+            accList = []
+        
         transform = sparseTensor.transformFactory[self.manifest['transform']]
         pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                          total = evalBatches)
@@ -377,25 +380,22 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i >= evalBatches:
                 break # we're done here
 
-            if report:
-                with profile(activities=[ProfilerActivity.CUDA],
-                             profile_memory = True,
-                             record_shapes = True) as prof:
-                    with record_function("model_inference"):
-                        prediction = self(inpt)
-
-                print(prof.key_averages().table(sort_by="self_cuda_time_total", 
-                                                row_limit = 10))
-
-            else:
-                output = self.forward(inpt)
-
+            output = self.forward(inpt)
             loss = self.criterion(output, truth)
 
-            pbar.set_description("loss: "+str(round(loss.item(), 4)))
+            if accuracy:
+                prediction = torch.argmax(output.features, dim = 1)
+                thisAccuracy = (sum(prediction == truth)/len(prediction))# .cpu()
+                accList.append(thisAccuracy.item())
+                pbar.set_description("loss: "+str(round(loss.item(), 4)) + \
+                                     " acc: "+str(round(thisAccuracy.item(), 4)))
+            else:
+                pbar.set_description("loss: "+str(round(loss.item(), 4)))
 
-            # print ("loss", loss.item())
-            
+
             lossList.append(loss.item())
 
-        return lossList
+        if accuracy:
+            return lossList, accList
+        else:
+            return lossList
