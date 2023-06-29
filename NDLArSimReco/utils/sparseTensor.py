@@ -149,7 +149,7 @@ def array_to_sparseTensor_class(inferenceList, evInfoList):
     
     return inference, PIDlabel
 
-def array_to_sparseTensor_class_gt(inferenceList, evInfoList):
+def array_to_sparseTensor_class_gt(inferenceList, evInfoList, augment = True):
     ME.clear_global_coordinate_manager()
 
     infCoordTensors = []
@@ -162,9 +162,21 @@ def array_to_sparseTensor_class_gt(inferenceList, evInfoList):
     
     for inference, evinfo in zip(inferenceList, evInfoList):
 
-        # print ("this is one inference", inference)
-        infX = inference['x']
-        infY = inference['y']
+        if augment:
+            diagFlip = np.random.choice([False, True])
+            if diagFlip:
+                xKey, yKey = 'y', 'x'
+            else:
+                xKey, yKey = 'x', 'y'
+            xFlip = np.random.choice([-1, 1])
+            yFlip = np.random.choice([-1, 1])
+        else:
+            xKey, yKey = 'x', 'y'
+            xFlip = 1
+            yFlip = 1
+
+        infX = xFlip*inference[xKey]
+        infY = yFlip*inference[yKey]
         infZ = inference['z']
         infDE = inference['dE']
         # infDE_err = inference['dE_err']
@@ -190,7 +202,7 @@ def array_to_sparseTensor_class_gt(inferenceList, evInfoList):
     
     return inference, PIDlabel
     
-def array_to_sparseTensor_class_lndsm(hitList, evInfoList):
+def array_to_sparseTensor_class_lndsm(hitList, evInfoList, augment = True):
     ME.clear_global_coordinate_manager()
 
     hitCoordTensors = []
@@ -201,9 +213,22 @@ def array_to_sparseTensor_class_lndsm(hitList, evInfoList):
 
     for hit, evinfo in zip(hitList, evInfoList):
 
+        if augment:
+            diagFlip = np.random.choice([False, True])
+            if diagFlip:
+                xKey, yKey = 'y', 'x'
+            else:
+                xKey, yKey = 'x', 'y'
+            xFlip = np.random.choice([-1, 1])
+            yFlip = np.random.choice([-1, 1])
+        else:
+            xKey, yKey = 'x', 'y'
+            xFlip = 1
+            yFlip = 1
+
         # print ("this is one hit", hit)
-        hitX = hit['x']
-        hitY = hit['y']
+        hitX = xFlip*hit[xKey]
+        hitY = yFlip*hit[yKey]
         hitZ = hit['z']
         hitQ = hit['q']
         # infDE_err = hit['dE_err']
