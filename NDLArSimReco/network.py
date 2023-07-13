@@ -108,11 +108,19 @@ def init_layers(layerDictList, in_feat, D):
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'ResNetEncoderBlock':
             layer_out_feat = int(layerDict['out_feat'])
-            layer = blocks.ResNetEncoderBlock(
-                layer_in_feat,
-                layer_out_feat,
-                kernel_size = int(layerDict['kernel_size']),
-            )
+            if 'dropout' in layerDict:
+                layer = blocks.ResNetEncoderBlock(
+                    layer_in_feat,
+                    layer_out_feat,
+                    kernel_size = int(layerDict['kernel_size']),
+                    dropout = bool(layerDict['dropout']),
+                )
+            else:
+                layer = blocks.ResNetEncoderBlock(
+                    layer_in_feat,
+                    layer_out_feat,
+                    kernel_size = int(layerDict['kernel_size']),
+                )
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'DownSample':
             layer_out_feat = int(layerDict['out_feat'])
@@ -273,7 +281,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
             else:
-                transform = sparseTensor.transformFactory[self.manifest['transform']]
+                transform = sparseTensor.transformFactory[self.manifest['transform']]()
                 pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                                  total = dataLoader.batchesPerEpoch)
                 for j, (inpt, truth) in pbar:
@@ -373,7 +381,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         if accuracy:
             accList = []
         
-        transform = sparseTensor.transformFactory[self.manifest['transform']]
+        transform = sparseTensor.transformFactory[self.manifest['transform']](augment = False)
         pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
                          total = evalBatches)
         for i, (inpt, truth) in pbar:

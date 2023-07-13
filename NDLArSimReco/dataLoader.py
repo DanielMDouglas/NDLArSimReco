@@ -104,7 +104,7 @@ class GenericDataLoader:
             truths = []
             for imgIndex in self.sampleLoadOrder:
                 theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) == 0:
+                if len(theseInpts) <= 50:
                     continue
                 else:
                     inputs.append(theseInpts)
@@ -208,7 +208,7 @@ class ClassifierDataLoader (GenericDataLoader):
             truths = []
             for imgIndex in self.sampleLoadOrder:
                 theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) == 0:
+                if len(theseInpts) <= 50:
                     continue
                 else:
                     inputs.append(theseInpts)
@@ -228,9 +228,11 @@ class ClassifierDataLoader (GenericDataLoader):
         # load a given event from the currently loaded file
         event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
 
-        inference_mask = self.currentFile['inference']['eventID'] == event_id
+        inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
+                                        self.currentFile['inference']['dE'] > 0.5)
         self.inference_ev = self.currentFile['inference'][inference_mask]
-
+        print ("this inference", self.inference_ev)
+        
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
                                           
@@ -425,13 +427,13 @@ class RawDataLoader (GenericDataLoader):
             return hits, voxels
 
 class DataLoaderFactoryClass:
-    map =  {'DataLoader': DataLoader,
-            'ClassifierDataLoader': ClassifierDataLoader,
-            'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
-            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
-            'RawDataLoader': RawDataLoader,
-            'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
-            }
+    map = {'DataLoader': DataLoader,
+           'ClassifierDataLoader': ClassifierDataLoader,
+           'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
+           'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
+           'RawDataLoader': RawDataLoader,
+           'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
+    }
     def __getitem__(self, req):
         if req in self.map:
             return self.map[req]
