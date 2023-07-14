@@ -27,6 +27,7 @@ from .utils import sparseTensor
 lossDict = {'NLL': loss.NLL,
             'NLL_moyal': loss.NLL_moyal,
             'NLL_reluError': loss.NLL_reluError,
+            'NLL_reluError_masked': loss.NLL_reluError_masked,
             'MSE': loss.MSE,
             'NLLhomog': loss.NLL_homog,
             'voxOcc': loss.voxOcc,
