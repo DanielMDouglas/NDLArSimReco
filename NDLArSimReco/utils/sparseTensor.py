@@ -85,49 +85,49 @@ class array_to_sparseTensor(transform):
             # GenericPadCoordTensors.append(GenericPadCoords)
             # GenericPadFeatureTensors.apend(GenericPadFeature)
         
-            hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
-                                                            hitFeatureTensors,
-                                                            dtype = torch.int32)
+        hitCoords, hitFeature = ME.utils.sparse_collate(hitCoordTensors, 
+                                                        hitFeatureTensors,
+                                                        dtype = torch.int32)
                 
-            edepCoords, edepFeature = ME.utils.sparse_collate(edepCoordTensors, 
-                                                              edepFeatureTensors,
-                                                              dtype = torch.int32)
+        edepCoords, edepFeature = ME.utils.sparse_collate(edepCoordTensors, 
+                                                          edepFeatureTensors,
+                                                          dtype = torch.int32)
     
-            LarpixPadCoords, LarpixPadFeature = ME.utils.sparse_collate(LarpixPadCoordTensors, 
-                                                                        LarpixPadFeatureTensors,
-                                                                        dtype = torch.int32)
-
-            EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
-                                                                    EdepPadFeatureTensors,
+        LarpixPadCoords, LarpixPadFeature = ME.utils.sparse_collate(LarpixPadCoordTensors, 
+                                                                    LarpixPadFeatureTensors,
                                                                     dtype = torch.int32)
-            
-            # GenericPadCoords, GenericPadFeature = ME.utils.sparse_collate(GenericPadCoordTensors,
-            #                                                               GenericPadFeatureTensors,
-            #                                                               dtype = torch.int32)
-            
-            larpix = ME.SparseTensor(features = hitFeature.to(device),
-                                     coordinates = hitCoords.to(device))
-            edep = ME.SparseTensor(features = edepFeature.to(device),
-                                   coordinates = edepCoords.to(device),
-                                   coordinate_manager = larpix.coordinate_manager,
-                               )
-            LarpixPad = ME.SparseTensor(features = LarpixPadFeature.to(device),
-                                        coordinate_map_key = edep.coordinate_map_key,
-                                        coordinate_manager = larpix.coordinate_manager,
-                                    )
-            EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
-                                      coordinate_map_key =  larpix.coordinate_map_key,
-                                      coordinate_manager = larpix.coordinate_manager,
-                                  )
 
-            # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
-            #                              coordinate_map_key = larpix.coordinate_map_key,
-            #                              coordinate_manager = larpix.coordinate_manager)
+        EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
+                                                                EdepPadFeatureTensors,
+                                                                dtype = torch.int32)
             
-            larpix = larpix + LarpixPad # + GenericPad
-            edep = edep + EdepPad # + GenericPad
+        # GenericPadCoords, GenericPadFeature = ME.utils.sparse_collate(GenericPadCoordTensors,
+        #                                                               GenericPadFeatureTensors,
+        #                                                               dtype = torch.int32)
+        
+        larpix = ME.SparseTensor(features = hitFeature.to(device),
+                                 coordinates = hitCoords.to(device))
+        edep = ME.SparseTensor(features = edepFeature.to(device),
+                               coordinates = edepCoords.to(device),
+                               coordinate_manager = larpix.coordinate_manager,
+                               )
+        LarpixPad = ME.SparseTensor(features = LarpixPadFeature.to(device),
+                                    coordinate_map_key = edep.coordinate_map_key,
+                                    coordinate_manager = larpix.coordinate_manager,
+                                    )
+        EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
+                                  coordinate_map_key =  larpix.coordinate_map_key,
+                                  coordinate_manager = larpix.coordinate_manager,
+                                )
+        
+        # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
+        #                              coordinate_map_key = larpix.coordinate_map_key,
+        #                              coordinate_manager = larpix.coordinate_manager)
+        
+        larpix = larpix + LarpixPad # + GenericPad
+        edep = edep + EdepPad # + GenericPad
             
-            return larpix, edep
+        return larpix, edep
 
 class array_to_sparseTensor_class(transform):
     def __call__(self, inferenceList, evInfoList):
@@ -168,16 +168,16 @@ class array_to_sparseTensor_class(transform):
             
             PIDlabel.append(LABELS.index(evinfo['primaryPID']))
             
-            infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
-                                                            infFeatureTensors,
-                                                            dtype = torch.int32)
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
 
-            inference = ME.SparseTensor(features = infFeature.to(device),
-                                        coordinates = infCoords.to(device))
+        inference = ME.SparseTensor(features = infFeature.to(device),
+                                    coordinates = infCoords.to(device))
             
-            PIDlabel = torch.LongTensor(PIDlabel).to(device)
+        PIDlabel = torch.LongTensor(PIDlabel).to(device)
     
-            return inference, PIDlabel
+        return inference, PIDlabel
 
 class array_to_sparseTensor_class_homog(transform):
     def __call__(self, inferenceList, evInfoList):
@@ -218,16 +218,16 @@ class array_to_sparseTensor_class_homog(transform):
             
             PIDlabel.append(LABELS.index(evinfo['primaryPID']))
             
-            infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
-                                                            infFeatureTensors,
-                                                            dtype = torch.int32)
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
 
-            inference = ME.SparseTensor(features = infFeature.to(device),
-                                        coordinates = infCoords.to(device))
+        inference = ME.SparseTensor(features = infFeature.to(device),
+                                    coordinates = infCoords.to(device))
             
-            PIDlabel = torch.LongTensor(PIDlabel).to(device)
+        PIDlabel = torch.LongTensor(PIDlabel).to(device)
     
-            return inference, PIDlabel
+        return inference, PIDlabel
 
 class array_to_sparseTensor_class_gt(transform):
     def __call__(self, inferenceList, evInfoList):

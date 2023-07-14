@@ -32,6 +32,7 @@ def main(args):
         net.load_checkpoint(args.checkpoint)
     
     infilePath = manifest['testfilePath'] 
+
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
                       for thisFile in os.listdir(infilePath[0])]
@@ -39,14 +40,16 @@ def main(args):
     else:
         infileList = infilePath
         print ("loading files from list", infileList)
+    # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+    #                                                batchSize = manifest['batchSize'])
     dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = manifest['batchSize'])
+                                                   batchSize = 16)
 
     dl.genFileLoadOrder()
 
-    transform = sparseTensor.transformFactory[manifest['transform']]
+    transform = sparseTensor.transformFactory[manifest['transform']]()
     hits, edep = next(dl.load(transform = transform))
-
+    
     net.eval()
     prediction = net(hits)
     predMean, predStd = net.criterion.feature_map(prediction)
