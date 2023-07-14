@@ -24,7 +24,19 @@ def save_record(manifest, checkpointDict):
     errLoss = np.array([thisValue['lossInterval']
                         for thisValue in checkpointDict.values()])
     
-    outArray = np.ndarray((4, len(epoch)))
+    if 'medianAccuracy' in checkpointDict[1]:
+        outArray = np.ndarray((7, len(epoch)))
+
+        medAccuracy = np.array([thisValue['medianAccuracy']
+                                for thisValue in checkpointDict.values()])
+        accInterval = np.array([thisValue['accInterval']
+                                for thisValue in checkpointDict.values()])
+        outArray[4,:] = medAccuracy
+        outArray[5,:] = accInterval[:,0]
+        outArray[6,:] = accInterval[:,1]
+    else:
+        outArray = np.ndarray((4, len(epoch)))
+    
     outArray[0,:] = epoch
     outArray[1,:] = meanLoss
     outArray[2,:] = errLoss[:,0]
@@ -34,73 +46,6 @@ def save_record(manifest, checkpointDict):
                             "testEval.dat"),
                outArray)
 
-def main_old(args):
-    with open(args.manifest) as mf:
-        manifest = yaml.load(mf, Loader = yaml.FullLoader)
-
-    print ("initializing network...")
-    net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
-
-    epochs = np.unique([int(checkpoint.split('_')[-2]) for checkpoint in manifest['checkpoints']])
-
-    firstCheckpoints = {}
-    lastCheckpoints = {}
-
-    for thisEpoch in epochs:
-        theseCheckpoints = []
-        for checkpoint in manifest['checkpoints']:
-            n_epoch = int(checkpoint.split('_')[-2])
-            n_iter = int(checkpoint.split('_')[-1].split('.')[0])
-            if thisEpoch == n_epoch:
-                theseCheckpoints.append(checkpoint)
-
-        lastCheckpoints[thisEpoch+1] = {'checkpoint': theseCheckpoints[-1],
-                                        'iter': n_iter}
-        if thisEpoch > 0:
-            firstCheckpoints[thisEpoch] = {'checkpoint': theseCheckpoints[0],
-                                           'iter': n_iter}
-
-    finalCheckpoint = os.path.join(manifest['outdir'],
-                                   'checkpoint_final_'+str(manifest['nEpochs'])+'_0.ckpt') 
-    if os.path.exists(finalCheckpoint):
-        firstCheckpoints[thisEpoch+1] = {'checkpoint': finalCheckpoint,
-                                         'iter': 0}
-
-    if args.useLast:
-        theseCheckpoints = lastCheckpoints
-    else:
-        theseCheckpoints = firstCheckpoints
-
-    print ("using found checkpoints", theseCheckpoints)
-
-    infilePath = manifest['testfilePath'] 
-    # infilePath = manifest['trainfilePath'] 
-    if os.path.isdir(infilePath[0]):
-        infileList = [os.path.join(infilePath[0], thisFile) 
-                      for thisFile in os.listdir(infilePath[0])]
-        print ("loading files from list", infileList)
-    else:
-        infileList = infilePath
-        print ("loading files from list", infileList)
-    print ("initializing data loader...")
-    dl = DataLoader(infileList, batchSize = manifest['batchSize'])
-    # dl = DataLoader(infileList, batchSize = 32)
-
-    for epoch, valDict in theseCheckpoints.items():
-        checkpoint = valDict['checkpoint']
-        net.load_checkpoint(checkpoint)
-        loss = net.evalLoop(dl,
-                            nBatches = args.nBatches,
-                            evalMode = not args.trainMode)
-        
-        # meanLoss.append(np.mean(loss))
-        medianLoss = np.median(loss)
-        lossInterval = np.quantile(loss, (0.16, 0.84))
-
-        valDict['medianLoss'] = medianLoss
-        valDict['lossInterval'] = lossInterval
-
-    save_record(manifest, theseCheckpoints)
 def main(args):
     with open(args.manifest) as mf:
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
@@ -121,18 +66,36 @@ def main(args):
     dl = dataLoaderFactory[manifest['dataLoader']](infileList,
                                                    batchSize = manifest['batchSize'])
 
+    evaluatedCheckpoints = {}
+
     for log_entry in net.log_manager.entries:
-        print ("reverting from log entry:", log_entry.outDir)
-        log_entry.load()
-        # net.load_checkpoint(log_entry.manifest['checkpointPath'])
-        print ("current model state:", net.state_dict()['network.1.encoding_blocks.0.0.conv1.kernel']) 
+        if log_entry['n_iter'] == 0:
+            print ("loading from log entry:", log_entry.outDir)
+            net.load_checkpoint(log_entry['checkpointPath'])
+            result = net.evalLoop(dl, args.nBatches, accuracy = args.accuracy)
+            
+            if args.accuracy:
+                loss, accuracy = result
+            else:
+                loss = result
 
-        loss = net.evalLoop(dl, args.nBatches)
+            medianLoss = np.median(loss)
+            lossInterval = np.quantile(loss, (0.16, 0.84))
 
-        medianLoss = np.median(loss)
-        lossInterval = np.quantile(loss, (0.16, 0.84))
+            evaluatedCheckpoints[log_entry['n_epoch']] = {'medianLoss': medianLoss,
+                                                          'lossInterval': lossInterval}
+            if args.accuracy:
+                medianAcc = np.median(accuracy)
+                accInterval = np.quantile(accuracy, (0.16, 0.84))
 
-        print (medianLoss, lossInterval)
+                evaluatedCheckpoints[log_entry['n_epoch']]['medianAccuracy'] = medianAcc
+                evaluatedCheckpoints[log_entry['n_epoch']]['accInterval'] = accInterval
+                print (evaluatedCheckpoints[log_entry['n_epoch']])#['accuracy'] = accuracy
+                print (medianLoss, lossInterval, accuracy)
+            else:
+                print (medianLoss, lossInterval)
+
+    save_record(manifest, evaluatedCheckpoints)
     
 if __name__ == '__main__':
 
@@ -145,6 +108,9 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose',
                         action = 'store_true',
                         help = "print extra debug messages")
+    parser.add_argument('-a', '--accuracy',
+                        action = 'store_true',
+                        help = "whether to calculate the accuracy alongside the batch loss")
     parser.add_argument('-t', '--trainMode',
                         action = 'store_true',
                         help = "run the evaluation loop in train mode instead of eval mode (useful for networks with dropout)")

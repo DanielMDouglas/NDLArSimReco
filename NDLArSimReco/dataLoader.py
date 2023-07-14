@@ -104,7 +104,7 @@ class GenericDataLoader:
             truths = []
             for imgIndex in self.sampleLoadOrder:
                 theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) == 0:
+                if len(theseInpts) <= 50:
                     continue
                 else:
                     inputs.append(theseInpts)
@@ -197,13 +197,42 @@ class ClassifierDataLoader (GenericDataLoader):
     network.  It should yield inferred edep-sim images (possibly G.T. images
     as well), alongside the true primary particle type
     """
+    def load(self, transform = None):
+        if len(self.fileLoadOrder) == 0: 
+            self.genFileLoadOrder()
+        for fileIndex in self.fileLoadOrder:
+            self.loadNextFile(fileIndex)
+            if len(self.sampleLoadOrder) == 0: 
+                self.genSampleLoadOrder()
+            inputs = []
+            truths = []
+            for imgIndex in self.sampleLoadOrder:
+                theseInpts, theseTruths = self.load_image(imgIndex)
+                if len(theseInpts) <= 50:
+                    continue
+                else:
+                    inputs.append(theseInpts)
+                    truths.append(theseTruths)
+
+                if len(inputs) == self.batchSize:
+                    if transform:
+                        yield transform(inputs, truths)
+                    else:
+                        yield inputs, truths
+                    inputs = []
+                    truths = []
+            self.sampleLoadOrder = np.empty(0,)
+        self.fileLoadOrder = np.empty(0,)
+
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
         event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
 
-        inference_mask = self.currentFile['inference']['eventID'] == event_id
+        inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
+                                        self.currentFile['inference']['dE'] > 0.5)
         self.inference_ev = self.currentFile['inference'][inference_mask]
-
+        print ("this inference", self.inference_ev)
+        
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
                                           
@@ -398,13 +427,13 @@ class RawDataLoader (GenericDataLoader):
             return hits, voxels
 
 class DataLoaderFactoryClass:
-    map =  {'DataLoader': DataLoader,
-            'ClassifierDataLoader': ClassifierDataLoader,
-            'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
-            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
-            'RawDataLoader': RawDataLoader,
-            'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
-            }
+    map = {'DataLoader': DataLoader,
+           'ClassifierDataLoader': ClassifierDataLoader,
+           'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
+           'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
+           'RawDataLoader': RawDataLoader,
+           'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
+    }
     def __getitem__(self, req):
         if req in self.map:
             return self.map[req]

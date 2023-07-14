@@ -146,6 +146,7 @@ class ResNetEncoderBlock(torch.nn.Module):
     def __init__(self, in_features, out_features, kernel_size, dropout = False, name = 'ResNetEncoderBlock'):
         super(ResNetEncoderBlock, self).__init__()
 
+
         if dropout:
             self.convBlock1 = DropoutBlock(in_features, in_features, kernel_size)
             self.convBlock2 = DropoutBlock(in_features, in_features, kernel_size)

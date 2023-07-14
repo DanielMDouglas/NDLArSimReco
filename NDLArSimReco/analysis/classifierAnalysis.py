@@ -70,8 +70,8 @@ def main(args):
         
         # inferences.append(inference.item())
         # true_labels.append(truth.item())
-        inferences = np.concatenate((inferences, thisInference))
-        true_labels = np.concatenate((true_labels, truth))
+        inferences = np.concatenate((inferences, thisInference.cpu()))
+        true_labels = np.concatenate((true_labels, truth.cpu()))
 
     H, xedges, yedges = np.histogram2d(inferences, true_labels,
                                        bins = (np.linspace(-0.5, 4.5, 6),

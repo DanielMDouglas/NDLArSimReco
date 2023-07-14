@@ -65,7 +65,10 @@ def main(args):
     print ("initializing network...")
     net = ConfigurableSparseNetwork(D=3, manifest = manifest).to(device)
 
-    infilePath = manifest['trainfilePath'] 
+    if args.test:
+        infilePath = manifest['testfilePath'] 
+    else:
+        infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
                       for thisFile in os.listdir(infilePath[0])]
@@ -100,6 +103,8 @@ def main(args):
     net.eval()
     # net.train()
 
+    dl.genFileLoadOrder()
+    print ("fileLoadOrder", dl.fileLoadOrder)
     for fileIndex in tqdm.tqdm(dl.fileLoadOrder):
         dl.loadNextFile(fileIndex)
         print (dl.currentFileName)
@@ -115,8 +120,8 @@ def main(args):
                                    dtype = value,
                                    maxshape = (None,))
 
-        transform = sparseTensor.array_to_sparseTensor
-
+        transform = sparseTensor.transformFactory[manifest['transform']]()
+        
         dl.genSampleLoadOrder()
         pbar = tqdm.tqdm(dl.sampleLoadOrder)
         for evIndex in pbar:
@@ -213,6 +218,9 @@ if __name__ == '__main__':
                         help = "network manifest yaml file")
     parser.add_argument('-c', '--checkpoint', type = str,
                         required = True,
+                        help = "checkpoint file to start from")
+    parser.add_argument('-t', '--test',
+                        action = 'store_true',
                         help = "checkpoint file to start from")
     parser.add_argument('-o', '--outdir', type = str,
                         required = True,
