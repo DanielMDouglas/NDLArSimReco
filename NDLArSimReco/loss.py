@@ -91,6 +91,23 @@ class NLL_reluError (loss):
         
         return -LL
 
+class NLL_reluError_mask (loss):
+    def feature_map(self, outputSparseTensor):
+        mask = outputSparseTensor.features[:,0] > 0.25
+        mean = outputSparseTensor.features[mask,0]
+
+        epsilon = 1.e-2 
+        sigma = torch.relu(outputSparseTensor.features[mask,1]) + epsilon
+
+        return mean, sigma
+    def loss(self, truth, mean, sigma):    
+        diff = (mean - truth)
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+        LL = torch.sum(logp)/len(diff)
+        
+        return -LL
+
 class NLL_moyal (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]

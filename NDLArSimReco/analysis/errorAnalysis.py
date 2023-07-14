@@ -12,7 +12,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 import random
 
 from NDLArSimReco.network import ConfigurableSparseNetwork
-from NDLArSimReco.dataLoader import DataLoader
+from NDLArSimReco.dataLoader import dataLoaderFactory
 from NDLArSimReco.utils import sparseTensor
 
 import yaml
@@ -26,7 +26,7 @@ def main(args):
         manifest = yaml.load(mf, Loader = yaml.FullLoader)
 
     print ("initializing network...")
-    net = ConfigurableSparseNetwork(in_feat=1, D=3, manifest = manifest, make_output = False).to(device)
+    net = ConfigurableSparseNetwork(D=3, manifest = manifest, make_output = False).to(device)
     
     if args.checkpoint:
         net.load_checkpoint(args.checkpoint)
@@ -35,7 +35,7 @@ def main(args):
     if os.path.isdir(infilePath[0]):
         infileList = [os.path.join(infilePath[0], thisFile) 
                       for thisFile in os.listdir(infilePath[0])]
-        print ("loading files from list", infileList)
+        print ("loading files from directory", infileList)
     else:
         infileList = infilePath
         print ("loading files from list", infileList)
@@ -44,7 +44,8 @@ def main(args):
 
     dl.genFileLoadOrder()
 
-    hits, edep = next(dl.load(transform = sparseTensor.array_to_sparseTensor))
+    transform = sparseTensor.transformFactory[manifest['transform']]
+    hits, edep = next(dl.load(transform = transform))
 
     net.eval()
     prediction = net(hits)

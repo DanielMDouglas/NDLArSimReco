@@ -37,10 +37,10 @@ def main(args):
         print ("loading files from list", infileList)
 
     print ("initializing data loader...")
-    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = manifest['batchSize'])
     # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-    #                                                batchSize = 1)
+    #                                                batchSize = manifest['batchSize'])
+    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+                                                   batchSize = 1)
     net.log_manager.dataLoader = dl
     
     print ("loading from checkpoint", args.checkpoint)

@@ -152,6 +152,9 @@ if __name__ == '__main__':
                         default = 50,
                         type = int,
                         help = "Number of batches from the test dataset to evaluate on each checkpoint")
+    parser.add_argument('-a', '--accuracy',
+                        action = 'store_true',
+                        help = "whether to calculate the accuracty")
     parser.add_argument('-l', '--useLast',
                         action = 'store_true',
                         help = "optionally, use the last checkpoint in the epoch as a proxy")
