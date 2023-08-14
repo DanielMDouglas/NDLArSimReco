@@ -32,6 +32,7 @@ lossDict = {'NLL': loss.NLL,
             'NLLhomog': loss.NLL_homog,
             'voxOcc': loss.voxOcc,
             'NLL_voxOcc': loss.NLL_voxOcc,
+            'NLL_voxOcc_masked': loss.NLL_voxOcc_masked,
             'CrossEntropy': loss.CrossEntropy,
             }
 

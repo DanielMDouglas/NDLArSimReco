@@ -78,12 +78,9 @@ def main(args):
         print ("loading files from list", infileList)
 
     print ("initializing data loader...")
-    # dl = DataLoaderWithEvinfo(infileList,
-    #                           batchSize = manifest['batchSize'],
-    #                           sequentialLoad = True)
-    dl = DataLoader(infileList,
-                    batchSize = manifest['batchSize'],
-                    sequentialLoad = True)
+    dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+                                                   batchSize = manifest['batchSize'],
+                                                   sequentialLoad = True)
     # dl = DataLoader(infileList,
     #                 batchSize = 1,
     #                 sequentialLoad = True)
@@ -100,8 +97,9 @@ def main(args):
         latestCheckpoint.load()
         print ("loading checkpont at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
 
-    net.eval()
+    # net.eval()
     # net.train()
+    net.MCdropout()
 
     dl.genFileLoadOrder()
     print ("fileLoadOrder", dl.fileLoadOrder)
@@ -140,18 +138,22 @@ def main(args):
             inference = net.criterion.feature_map(output)
             # print ("output", output.features)
             # print ("inference", inference)
-            
-            inference_arr = np.empty(shape = (len(output),),
+
+            mask = inference[0].detach().cpu().numpy() > 0.25
+            if sum(mask) < 50:
+                continue
+
+            inference_arr = np.empty(shape = (sum(mask),),
                                      dtype = output_dtypes['inference'])
 
             # inference_arr['eventID'] = evIndex*np.ones(len(output), dtype = "u4")
-            inference_arr['eventID'] = evIndex*np.ones(len(output), dtype = "u4")
-            inference_arr['x'] = output.coordinates.detach().cpu().numpy()[:,1]
-            inference_arr['y'] = output.coordinates.detach().cpu().numpy()[:,2]
-            inference_arr['z'] = output.coordinates.detach().cpu().numpy()[:,3]
+            inference_arr['eventID'] = evIndex*np.ones(sum(mask), dtype = "u4")
+            inference_arr['x'] = output.coordinates.detach().cpu().numpy()[mask,1]
+            inference_arr['y'] = output.coordinates.detach().cpu().numpy()[mask,2]
+            inference_arr['z'] = output.coordinates.detach().cpu().numpy()[mask,3]
 
-            inference_arr['dE'] = inference[0].detach().cpu().numpy()
-            inference_arr['dE_err'] = inference[1].detach().cpu().numpy()
+            inference_arr['dE'] = inference[0].detach().cpu().numpy()[mask]
+            inference_arr['dE_err'] = inference[1].detach().cpu().numpy()[mask]
 
             write_to_output(outfile, hits, edep, inference_arr, evinfo)
 

@@ -131,7 +131,10 @@ class DataLoader (GenericDataLoader):
     """            
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
-        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+        try:
+            event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+        except IndexError:
+            event_id = -1
 
         hits_mask = self.currentFile['hits']['eventID'] == event_id
         self.hits_ev = self.currentFile['hits'][hits_mask]
@@ -177,19 +180,24 @@ class DataLoaderWithEvinfo (GenericDataLoader):
                     evinfos = []
             self.sampleLoadOrder = np.empty(0,)
     def load_image(self, eventIndex):
-        # load a given event from the currently loaded file
-        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
-
+        try:
+            # load a given event from the currently loaded file
+            event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+            # event_id = eventIndex
+        except IndexError:
+            event_id = -1
+    
         hits_mask = self.currentFile['hits']['eventID'] == event_id
         self.hits_ev = self.currentFile['hits'][hits_mask]
-
+        
         edep_mask = self.currentFile['edep']['eventID'] == event_id
         self.edep_ev = self.currentFile['edep'][edep_mask]
-
+        
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
         
         return self.hits_ev, self.edep_ev, self.evinfo_ev
+        
 
 class ClassifierDataLoader (GenericDataLoader):
     """
@@ -231,7 +239,6 @@ class ClassifierDataLoader (GenericDataLoader):
         inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
                                         self.currentFile['inference']['dE'] > 0.5)
         self.inference_ev = self.currentFile['inference'][inference_mask]
-        print ("this inference", self.inference_ev)
         
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
