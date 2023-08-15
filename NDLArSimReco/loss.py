@@ -219,7 +219,7 @@ class NLL_voxOcc_masked (loss):
         inferredOccupancy = torch.argmax(torch.stack([isEmptyVoxel, isFilledVoxel]).T, axis = 1)
 
         maskedMean = mean[inferredOccupancy]
-        maskedSima = sigma[inferredOccupancy]
+        maskedSigma = sigma[inferredOccupancy]
 
         return maskedMean, maskedSigma
 
@@ -235,14 +235,64 @@ class NLL_voxOcc_masked (loss):
 
         LL = torch.sum(logp)/len(diff)
         return -LL
-    
+
     def loss(self, truth, mean, sigma, isFilledVoxel, isEmptyVoxel):    
         occupancyLoss = self.occupancyLoss(truth, mean, sigma, isFilledVoxel, isEmptyVoxel)
         NLL = self.NLLLoss(truth, mean, sigma, isFilledVoxel, isEmptyVoxel)
         
-        lambda = 0.1
+        # lambda = 0.1
         # return lambda*NLL + occupancyLoss
         return NLL
+
+class NLL_voxOcc_softmax_masked (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        epsilon = 1.e-2 
+        sigma = torch.relu(outputSparseTensor.features[:,1]) + epsilon
+
+        isFilledVoxel = outputSparseTensor.features[:,2]
+        isEmptyVoxel = outputSparseTensor.features[:,3]
+
+        # self.mask = torch.softmax(torch.stack([isEmptyVoxel,
+        #                                        isFilledVoxel]).T, axis = 1)
+
+        # print (self.mask)
+        # print (self.mask.shape)
+        # mean = torch.sum(self.mask[0]*mean, self.mask[1]*torch.zeros_like(mean))
+        # sigma = torch.sum(self.mask[0]*sigma, self.mask[1]*torch.ones_like(sigma))
+
+        return mean, sigma, isFilledVoxel, isEmptyVoxel
+
+    def prediction(self, outputSparseTensor):
+        mean, sigma, isFilledVoxel, isEmptyVoxel = self.feature_map(outputSparseTensor)
+        inferredOccupancy = torch.argmax(torch.stack([isEmptyVoxel, isFilledVoxel]).T, axis = 1)
+
+        maskedMean = mean[inferredOccupancy]
+        maskedSigma = sigma[inferredOccupancy]
+
+        return maskedMean, maskedSigma
+
+    def occupancyLoss(self, truth, mean, sigma, isFilledVoxel, isEmptyVoxel):
+        inferredOccupancy = torch.softmax(torch.stack([isEmptyVoxel, isFilledVoxel]).T, axis = 1)
+        trueOccupancy = (truth > 0).long()
+        
+        return nn.CrossEntropyLoss()(inferredOccupancy, trueOccupancy)
+
+    def NLLLoss(self, truth, mean, sigma, isFilledVoxel, isEmptyVoxel):
+        diff = (mean - truth)
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+        LL = torch.sum(logp)/len(diff)
+        return -LL
+
+    def loss(self, truth, mean, sigma, isFilledVoxel, isEmptyVoxel):    
+        occupancyLoss = self.occupancyLoss(truth, mean, sigma, isFilledVoxel, isEmptyVoxel)
+        NLL = self.NLLLoss(truth, mean, sigma, isFilledVoxel, isEmptyVoxel)
+        
+        l = 1
+        return l*NLL + occupancyLoss
+        # return NLL
 
 class CrossEntropy (loss):
     def feature_map(self, outputTensor):
