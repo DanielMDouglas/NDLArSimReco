@@ -197,7 +197,6 @@ class VoxelOccupancyHead(torch.nn.Module):
 
         self.in_features = in_features
 
-
         valueBranchFilters = in_features*4
         valueBranchKernelSize = 3
         self.valueBranch = nn.Sequential(
@@ -249,7 +248,7 @@ class VoxelOccupancyHead(torch.nn.Module):
             ),
             ME.MinkowskiConvolution(
                 in_channels = occupancyBranchFilters,
-                out_channels = 2,
+                out_channels = 1,
                 kernel_size = occupancyBranchKernelSize,
                 stride = 1,
                 dimension = 3,
