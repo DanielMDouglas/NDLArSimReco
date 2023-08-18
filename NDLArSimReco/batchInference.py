@@ -139,8 +139,10 @@ def main(args):
             # print ("output", output.features)
             # print ("inference", inference)
 
-            mask = inference[0].detach().cpu().numpy() > 0.25
-            if sum(mask) < 50:
+            # mask = inference[0].detach().cpu().numpy() > 0.25
+            mask = inference[2].detach().cpu().numpy() > 0.5
+
+            if sum(mask) < 20:
                 continue
 
             inference_arr = np.empty(shape = (sum(mask),),
