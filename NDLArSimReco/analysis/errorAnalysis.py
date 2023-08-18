@@ -40,10 +40,10 @@ def main(args):
     else:
         infileList = infilePath
         print ("loading files from list", infileList)
-    # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-    #                                                batchSize = manifest['batchSize'])
     dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = 16)
+                                                   batchSize = manifest['batchSize'])
+    # dl = dataLoaderFactory[manifest['dataLoader']](infileList,
+    #                                                batchSize = 16)
 
     dl.genFileLoadOrder()
 
@@ -53,6 +53,7 @@ def main(args):
     net.eval()
     prediction = net(hits)
     predMean, predStd = net.criterion.feature_map(prediction)
+    print ('loss', net.criterion(prediction, edep))
 
     # Ereco = predMean.detach().numpy()
     # Ereco = predMean.detach().numpy() + 0.773*predStd.detach().numpy()
@@ -83,7 +84,8 @@ def main(args):
     Pullfig = plt.figure()
     PullAx = Pullfig.gca()
     # Ebins = np.linspace(0, 2, 30)
-    Ebins = np.linspace(0, 5, 50)
+    # Ebins = np.linspace(0, 5, 51)
+    Ebins = np.linspace(0.2, 1.8, 49)
     
     Etrue = edep.features.detach().numpy()[:,0]
     Etrue = np.max([Etrue, np.zeros_like(Etrue)], axis = 0)
@@ -184,10 +186,15 @@ def main(args):
     # print ("fitted intercept", reg.intercept_)
     # print ("fitted slope", reg.coef_)
     
-    meanSpace = np.linspace(0, Ebins[-1], 1000) 
+    meanSpace = np.linspace(0, Ebins[-1], 1000)
+
+    # mask = np.logical_or(Etrue > 0.25, Ereco > 0.25)
+    # Etrue = Etrue[mask]
+    # Ereco = Ereco[mask]
+    
     result = meanCorrAx.hist2d(Etrue, Ereco,
                                bins = (Ebins, Ebins),
-                               norm = colors.LogNorm(),
+                               # norm = colors.LogNorm(),
                                )
     # print ("result", result)
     meanCorrAx.plot(meanSpace, meanSpace, ls = '--', c = 'red')
@@ -197,6 +204,43 @@ def main(args):
     meanCorrAx.set_ylabel(r'Predicted Energy per Voxel [MeV]')
     plt.colorbar(result[-1])
     meanCorrFig.savefig("figs/meanCorr.png")
+
+    meanTrendFig = plt.figure()
+    meanTrendAx = meanTrendFig.gca()
+    from scipy.stats import binned_statistic
+    bin_means, bin_edges, binnumber = binned_statistic(Etrue, Ereco,
+                                                       statistic = 'mean',
+                                                       bins = Ebins)
+    bin_medians, bin_edges, binnumber = binned_statistic(Etrue, Ereco,
+                                                       statistic = 'median',
+                                                       bins = Ebins)
+    bin_std, bin_edges, binnumber = binned_statistic(Etrue, Ereco,
+                                                     statistic = 'std',
+                                                     bins = Ebins)
+    bin_lowCI, bin_edges, binnumber = binned_statistic(Etrue, Ereco,
+                                                       statistic = lambda x: np.quantile(x, 0.16),
+                                                       bins = Ebins)
+    bin_highCI, bin_edges, binnumber = binned_statistic(Etrue, Ereco,
+                                                        statistic = lambda x: np.quantile(x, 0.84),
+                                                        bins = Ebins)
+    
+    print (bin_means, bin_edges, binnumber)
+    bin_centers = 0.5*(bin_edges[:-1] + bin_edges[1:])
+
+    # print (bin_centers.shape, bin_means.shape)
+    print (bin_centers)
+    meanTrendAx.plot(meanSpace, meanSpace, ls = '--', c = 'red')
+    # meanTrendAx.errorbar(bin_centers, bin_means,
+    #                      yerr = bin_std,
+    #                      fmt = 'o')
+    meanTrendAx.errorbar(bin_centers, bin_means,
+                         yerr = (bin_medians - bin_lowCI, bin_highCI - bin_medians),
+                         fmt = 'o')
+    meanTrendAx.set_xlabel(r'G.T. Energy per Voxel [MeV]')
+    meanTrendAx.set_ylabel(r'Predicted Energy per Voxel [MeV]')
+
+    # meanTrendAx.scatter(bin_centers, bin_centers)
+    meanTrendFig.savefig("figs/meanTrend.png")
     
     # import uncertainty_toolbox as uct
     # # Ereco = prediction.features.detach()[:,0]
