@@ -406,7 +406,7 @@ class ResNetEncoder(torch.nn.Module):
         self.nFilters = nFilters
         self.in_features = in_features
         
-        self.input_block = nn.Sequential(i
+        self.input_block = nn.Sequential(
             ME.MinkowskiConvolution(
                 in_channels = self.in_features,
                 out_channels = self.nFilters,
@@ -454,7 +454,8 @@ class ResNetEncoder(torch.nn.Module):
         return out
 
 class UResNet_dropout(torch.nn.Module):
-    def __init__(self, in_features, out_features, kernel_size, depth = 2, nFilters = 16, dropout_depth = 2, name='uresnet_dropout'):
+    def __init__(self, in_features, out_features, kernel_size, depth = 2, nFilters = 16, 
+                 dropout_depth = 2, fullEncDropout = False, name='uresnet_dropout'):
         super(UResNet_dropout, self).__init__()
 
         self.depth = depth # number of pool/unpool layers, not including input + output
@@ -530,7 +531,7 @@ class UResNet_dropout(torch.nn.Module):
         self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
 
         for i in range(self.depth):
-            if (self.depth - i) > dropout_depth:
+            if (self.depth - i) > dropout_depth or fullEncDropout:
                 self.decoding_layers.append(
                     UpSample(
                         in_features = self.featureSizesDec[i][0],

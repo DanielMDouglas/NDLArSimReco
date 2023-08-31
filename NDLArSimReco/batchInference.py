@@ -142,8 +142,8 @@ def main(args):
             # mask = inference[0].detach().cpu().numpy() > 0.25
             mask = inference[2].detach().cpu().numpy() > 0.5
 
-            if sum(mask) < 20:
-                continue
+            # if sum(mask) < 20:
+            #     continue
 
             inference_arr = np.empty(shape = (sum(mask),),
                                      dtype = output_dtypes['inference'])

@@ -216,7 +216,7 @@ class ClassifierDataLoader (GenericDataLoader):
             truths = []
             for imgIndex in self.sampleLoadOrder:
                 theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) <= 50:
+                if len(theseInpts) <= 2:
                     continue
                 else:
                     inputs.append(theseInpts)
@@ -236,8 +236,9 @@ class ClassifierDataLoader (GenericDataLoader):
         # load a given event from the currently loaded file
         event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
 
-        inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
-                                        self.currentFile['inference']['dE'] > 0.5)
+        # inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
+        #                                 self.currentFile['inference']['dE'] > 0.5)
+        inference_mask = self.currentFile['inference']['eventID'] == event_id
         self.inference_ev = self.currentFile['inference'][inference_mask]
         
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
@@ -245,6 +246,50 @@ class ClassifierDataLoader (GenericDataLoader):
                                           
         return self.inference_ev, self.evinfo_ev
 
+class EnergyRegressionDataLoader (GenericDataLoader):
+    """
+    This instance of the DataLoader class is mean for training a classifier
+    network.  It should yield inferred edep-sim images (possibly G.T. images
+    as well), alongside the true primary particle type
+    """
+    def load(self, transform = None):
+        if len(self.fileLoadOrder) == 0: 
+            self.genFileLoadOrder()
+        for fileIndex in self.fileLoadOrder:
+            self.loadNextFile(fileIndex)
+            if len(self.sampleLoadOrder) == 0: 
+                self.genSampleLoadOrder()
+            inputs = []
+            truths = []
+            for imgIndex in self.sampleLoadOrder:
+                theseInpts, theseTruths = self.load_image(imgIndex)
+                if len(theseInpts) <= 2:
+                    continue
+                else:
+                    inputs.append(theseInpts)
+                    truths.append(theseTruths)
+
+                if len(inputs) == self.batchSize:
+                    if transform:
+                        yield transform(inputs, truths)
+                    else:
+                        yield inputs, truths
+                    inputs = []
+                    truths = []
+            self.sampleLoadOrder = np.empty(0,)
+        self.fileLoadOrder = np.empty(0,)
+
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        inference_mask = self.currentFile['inference']['eventID'] == event_id
+        self.inference_ev = self.currentFile['inference'][inference_mask]
+        
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+                                          
+        return self.inference_ev, self.edep_ev
 
 class ClassifierDataLoaderGT (GenericDataLoader):
     """
@@ -440,6 +485,7 @@ class DataLoaderFactoryClass:
            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
            'RawDataLoader': RawDataLoader,
            'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
+           'EnergyRegressionDataLoader': EnergyRegressionDataLoader,
     }
     def __getitem__(self, req):
         if req in self.map:
