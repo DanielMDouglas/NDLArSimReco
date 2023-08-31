@@ -18,6 +18,8 @@ from NDLArSimReco.utils import sparseTensor
 import yaml
 import os
 
+# from SLACplots.colors import *
+
 import MinkowskiEngine as ME
 ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
@@ -52,13 +54,22 @@ def main(args):
     
     net.eval()
     prediction = net(hits)
-    predMean, predStd = net.criterion.feature_map(prediction)
+    predMean, predStd, predOcc = net.criterion.feature_map(prediction)
+    predMask = predOcc > 0.5
+    predMean = torch.where(predMask, predMean, torch.zeros_like(predMean))
+    # predStd = torch.where(predMask, predStd, torch.ones_like(predStd))
+    predStd = torch.where(predMask, predStd, 0.1*torch.ones_like(predStd))
+    # predStd /= (4*predMean + 2)
     print ('loss', net.criterion(prediction, edep))
 
     # Ereco = predMean.detach().numpy()
     # Ereco = predMean.detach().numpy() + 0.773*predStd.detach().numpy()
     Ereco = predMean.detach().numpy()
-    
+    error = predStd.detach().numpy()
+
+    Etrue = edep.features.detach().numpy()[:,0]
+    Etrue = np.max([Etrue, np.zeros_like(Etrue)], axis = 0)
+
     # nDropoutPredictions = 10
 
     # MCDmeanPred = []
@@ -74,6 +85,14 @@ def main(args):
 
     # MCDmeanPredictions = np.mean(MCDmeanPred)
     # MCDstdPredictions = np.sqrt(sum(STDi**2 for STDi in MCDstdPred))
+
+    scatFig = plt.figure()
+    scatAx = scatFig.gca()
+    # scatAx.scatter(Ereco, error)
+    # scatAx.scatter(Etrue, error)
+    scatAx.hist2d(np.abs(Etrue - Ereco), error)
+    
+    scatFig.savefig('figs/reco_vs_error.png')
     
     Efig = plt.figure()
     Eax = Efig.gca()
@@ -86,9 +105,8 @@ def main(args):
     # Ebins = np.linspace(0, 2, 30)
     # Ebins = np.linspace(0, 5, 51)
     Ebins = np.linspace(0.2, 1.8, 49)
+    # Ebins = np.linspace(0.2, 1.8, 26)
     
-    Etrue = edep.features.detach().numpy()[:,0]
-    Etrue = np.max([Etrue, np.zeros_like(Etrue)], axis = 0)
     # epsilon = 1.e-2
     Eax.hist(Etrue, histtype = 'step', label = 'Ground Truth', bins = Ebins)
 
@@ -151,28 +169,28 @@ def main(args):
     # # error = prediction.features_at_coordinates(coords.float())[:,1].detach().numpy()
     # # error = np.exp(error) + epsilon
     # error = torch.relu(prediction.features_at_coordinates(coords.float())[:,1]).detach().numpy() + epsilon
-    # resid = Etrue - Ereco
+    resid = Etrue[predMask] - Ereco[predMask]
     # print (Etrue.shape)
     # print (Ereco.shape)
 
-    # PullAx.hist(resid/error,
-    #             density = True,
-    #             histtype = 'step',
-    #             label = 'residual / predicted uncertainty',
-    #             bins = np.linspace(-3, 3, 50),
-    #             )
+    PullAx.hist(resid/error[predMask],
+                density = True,
+                histtype = 'step',
+                label = 'residual / predicted uncertainty',
+                bins = np.linspace(-3, 3, 50),
+                )
     # PullAx.hist(resid/stdPredictions,
     #             density = True,
     #             histtype = 'step',
     #             label = 'residual / model uncertainty',
     #             bins = np.linspace(-3, 3, 50),
     #             )
-    # import scipy.stats as st
-    # zSpace = np.linspace(-3, 3, 1000)
-    # PullAx.plot(zSpace, st.norm.pdf(zSpace))
-    # PullAx.set_xlabel(r'Prediction Z-Score')
-    # Pullfig.legend()
-    # Pullfig.savefig("figs/pull.png")
+    import scipy.stats as st
+    zSpace = np.linspace(-3, 3, 1000)
+    PullAx.plot(zSpace, st.norm.pdf(zSpace))
+    PullAx.set_xlabel(r'Prediction Z-Score')
+    Pullfig.legend()
+    Pullfig.savefig("figs/pull.png")
 
     meanCorrFig = plt.figure()
     meanCorrAx = meanCorrFig.gca()
@@ -194,7 +212,7 @@ def main(args):
     
     result = meanCorrAx.hist2d(Etrue, Ereco,
                                bins = (Ebins, Ebins),
-                               # norm = colors.LogNorm(),
+                               norm = colors.LogNorm(),
                                )
     # print ("result", result)
     meanCorrAx.plot(meanSpace, meanSpace, ls = '--', c = 'red')
@@ -242,7 +260,7 @@ def main(args):
     # meanTrendAx.scatter(bin_centers, bin_centers)
     meanTrendFig.savefig("figs/meanTrend.png")
     
-    # import uncertainty_toolbox as uct
+    import uncertainty_toolbox as uct
     # # Ereco = prediction.features.detach()[:,0]
     # # Ereco = torch.ReLU(Ereco)
     # # epsilon = 1.e-2
@@ -250,18 +268,31 @@ def main(args):
     # # Etrue = edep.features.detach()[:,0]
     # # Etrue = torch.ReLU(Etrue)
     # # uct.viz.plot_calibration(Ereco, error, Etrue-Ereco)
-    # uct.viz.plot_calibration(Ereco, error, Etrue)
-    # plt.savefig("figs/calibration.png")
+    uct.viz.plot_calibration(Ereco[predMask], error[predMask], Etrue[predMask])
+    plt.savefig("figs/calibration.png")
 
-    # uct.viz.plot_intervals(Ereco, error, Etrue, n_subset = 20)
-    # plt.savefig("figs/intervals.png")
+    uct.viz.plot_intervals(Ereco, error, Etrue, n_subset = 50)
+    plt.savefig("figs/intervals.png")
 
-    # uct.viz.plot_intervals_ordered(Ereco, error, Etrue, n_subset = 20)
-    # # uct.viz.plot_intervals_ordered(Ereco, error, Etrue)
-    # plt.savefig("figs/intervals_ordered.png")
+    errBins = np.linspace(0, 2, 51)
+    plt.figure()
+    plt.hist2d(np.abs(Ereco[predMask] - Etrue[predMask]), error[predMask],
+               norm = colors.LogNorm(),
+               bins = (errBins, errBins))
+    plt.plot(np.linspace(0, 2, 1000),
+             np.linspace(0, 2, 1000),
+             ls = '--',
+             color = 'red')
+    plt.xlabel(r'True Error $|\hat{E} - E|$ [MeV]')
+    plt.ylabel(r'Predicted Error $\sigma$ [MeV]')
+    plt.savefig("figs/errDist.png")
+    
+    uct.viz.plot_intervals_ordered(Ereco[predMask], error[predMask], Etrue[predMask], n_subset = 50)
+    # uct.viz.plot_intervals_ordered(Ereco, error, Etrue)
+    plt.savefig("figs/intervals_ordered.png")
 
     # # pnn_metrics = uct.metrics.get_all_metrics(Ereco, error, Etrue-Ereco)
-    # pnn_metrics = uct.metrics.get_all_metrics(Ereco, error, Etrue)
+    pnn_metrics = uct.metrics.get_all_metrics(Ereco[predMask], error[predMask], Etrue[predMask])
 
     # # uct.viz.plot_calibration(Ereco, error, Etrue)
     # # plt.savefig("figs/calibration.png")

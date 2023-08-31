@@ -5,6 +5,7 @@ import random
 import numpy as np
 import h5py
 import tqdm
+import particle
 
 from NDLArSimReco.network import ConfigurableSparseNetwork
 from NDLArSimReco.dataLoader import *
@@ -141,6 +142,11 @@ def main(args):
 
             # mask = inference[0].detach().cpu().numpy() > 0.25
             mask = inference[2].detach().cpu().numpy() > 0.5
+            print ("mask pass, evinfo:",
+                   sum(mask),
+                   sum(mask)/len(mask),
+                   particle.Particle.from_pdgid(evinfo['primaryPID']).latex_name)
+                   # evinfo.dtype)
 
             if sum(mask) < 20:
                 continue

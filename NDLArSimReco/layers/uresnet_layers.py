@@ -406,7 +406,7 @@ class ResNetEncoder(torch.nn.Module):
         self.nFilters = nFilters
         self.in_features = in_features
         
-        self.input_block = nn.Sequential(i
+        self.input_block = nn.Sequential(
             ME.MinkowskiConvolution(
                 in_channels = self.in_features,
                 out_channels = self.nFilters,
