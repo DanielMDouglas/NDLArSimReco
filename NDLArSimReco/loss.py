@@ -46,6 +46,21 @@ class MSE (loss):
 
         return mse
 
+class MSE_to_scalar (loss):
+    def feature_map(self, outputSparseTensor):
+        """
+        Each subclass implements a function which takes
+        the network output sparse tensor and returns a
+        tuple of features mapped to their physical meaning.
+        If not specified, just pass the 0th feature
+        """
+        return outputSparseTensor.features[:,0],
+    def truth_map(self, truth):
+        return truth
+    def loss(self, truth, pred):
+        print (truth, pred)
+        return nn.MSELoss()(pred, truth)
+
 class NLL_homog (loss):
     def loss(self, truth, mean):
         sigma = torch.ones_like(mean)
@@ -284,10 +299,15 @@ class NLL_voxOcc_softmax_masked (loss):
         return nn.functional.binary_cross_entropy(inferredOccupancy, trueOccupancy)
 
     def NLLLoss(self, truth, mean, sigma, isFilledVoxel):
-        diff = (mean - truth)
-        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+        truthMask = truth > 0
+        maskedMean = mean[truthMask]
+        maskedTruth = truth[truthMask]
+        maskedSigma = sigma[truthMask]
 
-        LL = torch.sum(logp)/len(diff)
+        diff = (maskedMean - maskedTruth)
+        logp = -0.5*torch.pow(diff/maskedSigma, 2) - torch.log(maskedSigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+        LL = torch.sum(logp)/sum(truthMask)
         return -LL
 
     def loss(self, truth, mean, sigma, isFilledVoxel):    

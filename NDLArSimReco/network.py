@@ -29,6 +29,7 @@ lossDict = {'NLL': loss.NLL,
             'NLL_reluError': loss.NLL_reluError,
             'NLL_reluError_masked': loss.NLL_reluError_masked,
             'MSE': loss.MSE,
+            'MSE_to_scalar': loss.MSE_to_scalar,
             'NLLhomog': loss.NLL_homog,
             'voxOcc': loss.voxOcc,
             'NLL_voxOcc': loss.NLL_voxOcc,
@@ -75,6 +76,8 @@ def init_layers(layerDictList, in_feat, D):
             layer = ME.MinkowskiGlobalMaxPooling()
         elif layerDict['type'] == 'MGlobalAvgPooling':
             layer = ME.MinkowskiGlobalAvgPooling()
+        elif layerDict['type'] == 'MGlobalSumPooling':
+            layer = ME.MinkowskiGlobalSumPooling()
         elif layerDict['type'] == 'MLinear':
             layer_out_feat = int(layerDict['out_feat'])
             layer = ME.MinkowskiLinear(
@@ -142,6 +145,17 @@ def init_layers(layerDictList, in_feat, D):
                 kernel_size = int(layerDict['kernel_size']),
                 depth = int(layerDict['depth']),
                 dropout_depth = int(layerDict['dropout_depth']),
+            )
+            layer_in_feat = layer_out_feat
+        elif layerDict['type'] == 'UResNetFullEncDropout':
+            layer_out_feat = int(layerDict['out_feat'])
+            layer = uresnet_layers.UResNet_dropout(
+                layer_in_feat,
+                layer_out_feat,
+                kernel_size = int(layerDict['kernel_size']),
+                depth = int(layerDict['depth']),
+                dropout_depth = int(layerDict['dropout_depth']),
+                fullEncDropout = True,
             )
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'UNet':

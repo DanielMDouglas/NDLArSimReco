@@ -148,8 +148,8 @@ def main(args):
                    particle.Particle.from_pdgid(evinfo['primaryPID']).latex_name)
                    # evinfo.dtype)
 
-            if sum(mask) < 20:
-                continue
+            # if sum(mask) < 20:
+            #     continue
 
             inference_arr = np.empty(shape = (sum(mask),),
                                      dtype = output_dtypes['inference'])
