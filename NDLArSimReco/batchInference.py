@@ -24,14 +24,17 @@ output_dtypes = {"hits": np.dtype([("eventID", "u4"),
                                    ("x", "f4"),
                                    ("y", "f4"),
                                    ("z", "f4"),
-                                   ("dE", "f4")],
+                                   ("dE", "f4"),
+                                   ("PID", "u4"),
+                                   ("semantic_label", "u4")],
                                   align = True),
                  "inference": np.dtype([("eventID", "u4"),
                                         ("x", "f4"),
                                         ("y", "f4"),
                                         ("z", "f4"),
                                         ("dE", "f4"),
-                                        ("dE_err", "f4")],
+                                        ("dE_err", "f4"),
+                                    ],
                                        align = True),
                  "evinfo": np.dtype([("eventID", "u4"),
                                      ("primaryPID", "i4")],
@@ -105,8 +108,12 @@ def main(args):
     dl.genFileLoadOrder()
     print ("fileLoadOrder", dl.fileLoadOrder)
     for fileIndex in tqdm.tqdm(dl.fileLoadOrder):
-        dl.loadNextFile(fileIndex)
-        print (dl.currentFileName)
+        try:
+            dl.loadNextFile(fileIndex)
+            print (dl.currentFileName)
+        except OSError:
+            print ("skipping bad file...")
+            continue
         outputFileName = os.path.join(args.outdir,
                                       os.path.basename(dl.currentFileName))
         print ("trying to write to output file,", outputFileName)
@@ -119,7 +126,7 @@ def main(args):
                                    dtype = value,
                                    maxshape = (None,))
 
-        transform = sparseTensor.transformFactory[manifest['transform']]()
+        transform = sparseTensor.transformFactory[manifest['transform']](augment = False)
         
         dl.genSampleLoadOrder()
         pbar = tqdm.tqdm(dl.sampleLoadOrder)
@@ -141,12 +148,18 @@ def main(args):
             # print ("inference", inference)
 
             # mask = inference[0].detach().cpu().numpy() > 0.25
+            # print (inference[2].detach().cpu().numpy())
+
             mask = inference[2].detach().cpu().numpy() > 0.5
-            print ("mask pass, evinfo:",
-                   sum(mask),
-                   sum(mask)/len(mask),
-                   particle.Particle.from_pdgid(evinfo['primaryPID']).latex_name)
-                   # evinfo.dtype)
+            # mask = inference[1].detach().cpu().numpy() > 0.5
+            # print (evinfo)
+            # mask *= (evinfo['primaryPID'] != 2212)
+            # print (mask)
+            # print ("mask pass, evinfo:",
+            #        sum(mask),
+            #        sum(mask)/len(mask),
+            #        particle.Particle.from_pdgid(evinfo['primaryPID']).latex_name)
+            #        # evinfo.dtype)
 
             # if sum(mask) < 20:
             #     continue
@@ -155,7 +168,7 @@ def main(args):
                                      dtype = output_dtypes['inference'])
 
             # inference_arr['eventID'] = evIndex*np.ones(len(output), dtype = "u4")
-            inference_arr['eventID'] = evIndex*np.ones(sum(mask), dtype = "u4")
+            inference_arr['eventID'] = evinfo['eventID'][0]*np.ones(sum(mask), dtype = "u4")
             inference_arr['x'] = output.coordinates.detach().cpu().numpy()[mask,1]
             inference_arr['y'] = output.coordinates.detach().cpu().numpy()[mask,2]
             inference_arr['z'] = output.coordinates.detach().cpu().numpy()[mask,3]

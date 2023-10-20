@@ -318,6 +318,94 @@ class NLL_voxOcc_softmax_masked (loss):
         return l*NLL + occupancyLoss
         # return NLL
 
+class MSE_voxOcc_softmax_masked (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        isFilledVoxel = torch.sigmoid(outputSparseTensor.features[:,1])
+
+        return mean, isFilledVoxel
+
+    def prediction(self, outputSparseTensor):
+        mean, isFilledVoxel = self.feature_map(outputSparseTensor)
+        inferredOccupancy = isFilledVoxel > 0.5
+
+        maskedMean = mean[inferredOccupancy]
+
+        return maskedMean
+
+    def occupancyLoss(self, truth, mean, isFilledVoxel):
+        inferredOccupancy = isFilledVoxel
+        trueOccupancy = (truth > 0).float()
+        
+        return nn.functional.binary_cross_entropy(inferredOccupancy, trueOccupancy)
+
+    def MSELoss(self, truth, mean, isFilledVoxel):
+        truthMask = truth > 0
+        maskedMean = mean[truthMask]
+        maskedTruth = truth[truthMask]
+
+        diff = (maskedMean - maskedTruth)
+        MSE = torch.mean(torch.pow(diff, 2))
+        return MSE
+
+    def loss(self, truth, mean, isFilledVoxel):    
+        occupancyLoss = self.occupancyLoss(truth, mean, isFilledVoxel)
+        MSE = self.MSELoss(truth, mean, isFilledVoxel)
+        
+        l = 1
+        return l*MSE + occupancyLoss
+        # return NLL
+
+class MSE_voxOcc_softmax_masked_totE (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        isFilledVoxel = torch.sigmoid(outputSparseTensor.features[:,1])
+
+        return mean, isFilledVoxel
+
+    def prediction(self, outputSparseTensor):
+        mean, isFilledVoxel = self.feature_map(outputSparseTensor)
+        inferredOccupancy = isFilledVoxel > 0.5
+
+        maskedMean = mean[inferredOccupancy]
+
+        return maskedMean
+
+    def energyLoss(self, truth, mean, isFilledVoxel):
+        truthMask = truth > 0
+        maskedMean = torch.sum(mean[truthMask])
+        maskedTruth = torch.sum(truth[truthMask])
+
+        diff = (maskedMean - maskedTruth)
+        MSE = torch.mean(torch.pow(diff, 2))
+        return MSE
+
+    def occupancyLoss(self, truth, mean, isFilledVoxel):
+        inferredOccupancy = isFilledVoxel
+        trueOccupancy = (truth > 0).float()
+        
+        return nn.functional.binary_cross_entropy(inferredOccupancy, trueOccupancy)
+
+    def MSELoss(self, truth, mean, isFilledVoxel):
+        truthMask = truth > 0
+        maskedMean = mean[truthMask]
+        maskedTruth = truth[truthMask]
+
+        diff = (maskedMean - maskedTruth)
+        MSE = torch.mean(torch.pow(diff, 2))
+        return MSE
+
+    def loss(self, truth, mean, isFilledVoxel):    
+        occupancyLoss = self.occupancyLoss(truth, mean, isFilledVoxel)
+        MSE = self.MSELoss(truth, mean, isFilledVoxel)
+        energyLoss = self.energyLoss(truth, mean, isFilledVoxel)
+        
+        l = 1
+        return l*MSE + occupancyLoss + energyLoss
+        # return NLL
+
 class NLL_voxOcc_softmax_masked_inference (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]
@@ -338,8 +426,9 @@ class NLL_voxOcc_softmax_masked_inference (loss):
         return mean, sigma, isFilledVoxel
 
     def prediction(self, outputSparseTensor):
-        mean, sigma, isFilledVoxel, isEmptyVoxel = self.feature_map(outputSparseTensor)
-        inferredOccupancy = torch.argmax(torch.stack([isEmptyVoxel, isFilledVoxel]).T, axis = 1)
+        mean, sigma, isFilledVoxel = self.feature_map(outputSparseTensor)
+        # inferredOccupancy = torch.argmax(torch.stack([isEmptyVoxel, isFilledVoxel]).T, axis = 1
+        inferredOccupancy = isFilledVoxel > 0.5
 
         maskedMean = mean[inferredOccupancy]
         maskedSigma = sigma[inferredOccupancy]
@@ -379,6 +468,14 @@ class CrossEntropy (loss):
         return truth
         
     def loss(self, truth, output):
-        # print ("output", output)
-        # print ("truth", truth)
         return nn.CrossEntropyLoss()(output, truth)
+
+class semanticSegmentationCrossEntropy (loss):
+    def feature_map(self, outputTensor):
+        return outputTensor.features[:,0],
+
+    def truth_map(self, truth):
+        return truth.features[:,0]
+        
+    def loss(self, truth, output):
+        return torch.nn.functional.binary_cross_entropy_with_logits(output, truth)

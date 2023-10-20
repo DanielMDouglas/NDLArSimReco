@@ -268,3 +268,130 @@ class VoxelOccupancyHead(torch.nn.Module):
 
         return newTensor
 
+class VoxelOccupancyHeadDeterministic(torch.nn.Module):
+    def __init__(self, in_features, name = 'VoxelOccupancyHeadDeterministic'):
+        super(VoxelOccupancyHeadDeterministic, self).__init__()
+
+        self.in_features = in_features
+
+        valueBranchFilters = in_features*4
+        valueBranchKernelSize = 3
+        self.valueBranch = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = valueBranchFilters,
+                kernel_size = valueBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                valueBranchFilters,
+                valueBranchFilters,
+                valueBranchKernelSize,
+            ),
+            ResNetBlock(
+                valueBranchFilters,
+                valueBranchFilters,
+                valueBranchKernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = valueBranchFilters,
+                out_channels = 1,
+                kernel_size = valueBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+        occupancyBranchFilters = in_features*4
+        occupancyBranchKernelSize = 3
+        self.occupancyBranch = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = occupancyBranchFilters,
+                kernel_size = occupancyBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                occupancyBranchFilters,
+                occupancyBranchFilters,
+                occupancyBranchKernelSize,
+            ),
+            ResNetBlock(
+                occupancyBranchFilters,
+                occupancyBranchFilters,
+                occupancyBranchKernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = occupancyBranchFilters,
+                out_channels = 1,
+                kernel_size = occupancyBranchKernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+    def forward(self, x):
+        valueOut = self.valueBranch(x)
+        occupancyOut = self.occupancyBranch(x)
+
+        newTensor = ME.SparseTensor(features = torch.concat((valueOut.features,
+                                                             occupancyOut.features),
+                                                            axis = 1),
+                                    coordinate_map_key = x.coordinate_map_key,
+                                    coordinate_manager = x.coordinate_manager,
+        )
+
+        return newTensor
+
+class SemanticSegmentationHead(torch.nn.Module):
+    def __init__(self, in_features, name = 'SemanticSegmentationHead'):
+        super(SemanticSegmentationHead, self).__init__()
+
+        self.in_features = in_features
+
+        nFilters = in_features*4
+        kernelSize = 3
+        self.head = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = nFilters,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = nFilters,
+                out_channels = 1,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+    def forward(self, x):
+        # print ('head output', self.head(x))
+        # classPred = torch.sigmoid(self.head(x))
+        # print ('class pred', classPred)
+        classPred = self.head(x)
+
+        # newTensor = ME.SparseTensor(features = torch.concat((valueOut.features,
+        #                                                      occupancyOut.features),
+        #                                                     axis = 1),
+        #                             coordinate_map_key = x.coordinate_map_key,
+        #                             coordinate_manager = x.coordinate_manager,
+        # )
+
+        return classPred
+

@@ -26,14 +26,15 @@ def save_record(manifest, checkpointDict):
 
     entryLen = 4
     print (checkpointDict)
-    if 'medianAccuracy' in checkpointDict[1]:
+    firstKey = list(checkpointDict.keys())[0]
+    if 'medianAccuracy' in checkpointDict[firstKey]:
         entryLen += 3
-    if 'lossList' in checkpointDict[1]:
-        entryLen += len(checkpointDict[1]['lossList'])
+    if 'lossList' in checkpointDict[firstKey]:
+        entryLen += len(checkpointDict[firstKey]['lossList'])
 
     outArray = np.ndarray((entryLen, len(epoch)))
 
-    if 'medianAccuracy' in checkpointDict[1]:
+    if 'medianAccuracy' in checkpointDict[firstKey]:
         medAccuracy = np.array([thisValue['medianAccuracy']
                                 for thisValue in checkpointDict.values()])
         accInterval = np.array([thisValue['accInterval']
@@ -41,7 +42,7 @@ def save_record(manifest, checkpointDict):
         outArray[4,:] = medAccuracy
         outArray[5,:] = accInterval[:,0]
         outArray[6,:] = accInterval[:,1]
-    if 'lossList' in checkpointDict[1]:
+    if 'lossList' in checkpointDict[firstKey]:
         lossArray = np.array([thisValue['lossList']
                               for thisValue in checkpointDict.values()])
         outArray[7:, :] = lossArray.T

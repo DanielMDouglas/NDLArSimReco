@@ -65,7 +65,7 @@ class GenericDataLoader:
         # file has been fully iterated through
         self.currentFileName = self.fileList[fileIndex]
         self.currentFile = h5py.File(self.currentFileName)
-
+        
     def setSampleLoadOrder(self, sampleLoadOrder):
         """
         Manually specify the sample load order from a list
@@ -97,7 +97,10 @@ class GenericDataLoader:
         if len(self.fileLoadOrder) == 0: 
             self.genFileLoadOrder()
         for fileIndex in self.fileLoadOrder:
-            self.loadNextFile(fileIndex)
+            try:
+                self.loadNextFile(fileIndex)
+            except OSError: # if encounter a malformed file for some reason
+                continue 
             if len(self.sampleLoadOrder) == 0: 
                 self.genSampleLoadOrder()
             inputs = []
@@ -196,8 +199,7 @@ class DataLoaderWithEvinfo (GenericDataLoader):
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
         
-        return self.hits_ev, self.edep_ev, self.evinfo_ev
-        
+        return self.hits_ev, self.edep_ev, self.evinfo_ev        
 
 class ClassifierDataLoader (GenericDataLoader):
     """
@@ -470,13 +472,40 @@ class RawDataLoader (GenericDataLoader):
         voxels = (vox_ev['xBin']/self.pixelPitch,
                   vox_ev['yBin']/self.pixelPitch,
                   vox_ev['zBin']/self.pixelPitch,
-                  vox_ev['dE'])
+                  vox_ev['dE'],
+                  vox_ev['PID'],
+                  vox_ev['semantic_label'],)
 
         if get_true_tracks:
             tracks = None
             return hits, voxels, strongestTrack, hits_ev
         else:
             return hits, voxels
+
+class DataLoader_semanticSegmentation (GenericDataLoader):
+    """
+    This version of the DataLoader class is meant to parse the pared down
+    data format.  It should be faster, since all but the needed information
+    has been removed.
+    """            
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        try:
+            event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+        except IndexError:
+            event_id = -1
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+
+        inf_mask = self.currentFile['inference']['eventID'] == event_id
+        self.inf_ev = self.currentFile['inference'][inf_mask]
+
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+        
+        return self.inf_ev, self.edep_ev
+
 
 class DataLoaderFactoryClass:
     map = {'DataLoader': DataLoader,
@@ -486,7 +515,8 @@ class DataLoaderFactoryClass:
            'RawDataLoader': RawDataLoader,
            'DataLoaderWithEvinfo': DataLoaderWithEvinfo,
            'EnergyRegressionDataLoader': EnergyRegressionDataLoader,
-    }
+           'DataLoader_semanticSegmentation': DataLoader_semanticSegmentation,
+           }
     def __getitem__(self, req):
         if req in self.map:
             return self.map[req]

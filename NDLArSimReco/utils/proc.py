@@ -39,7 +39,9 @@ output_dtypes = {"hits": np.dtype([("eventID", "u4"),
                                    ("x", "f4"),
                                    ("y", "f4"),
                                    ("z", "f4"),
-                                   ("dE", "f4")],
+                                   ("dE", "f4"),
+                                   ("PID", "u4"),
+                                   ("semantic_label", "u4")],
                                   align = True),
                  "evinfo": np.dtype([("eventID", "u4"),
                                      ("primaryPID", "i4")],
@@ -130,6 +132,8 @@ def main(args):
         evEdep['y'] = np.array(voxels[1])[thresholdMask]
         evEdep['z'] = np.array(voxels[2])[thresholdMask]
         evEdep['dE'] = np.array(voxels[3])[thresholdMask]
+        evEdep['PID'] = np.array(voxels[4])[thresholdMask]
+        evEdep['semantic_label'] = np.array(voxels[5])[thresholdMask]
 
         nEv_ev = len(primPID)
         evEv = np.empty(nEv_ev, dtype = output_dtypes['evinfo'])

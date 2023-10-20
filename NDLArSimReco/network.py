@@ -35,8 +35,11 @@ lossDict = {'NLL': loss.NLL,
             'NLL_voxOcc': loss.NLL_voxOcc,
             'NLL_voxOcc_masked': loss.NLL_voxOcc_masked,
             'NLL_voxOcc_softmax_masked': loss.NLL_voxOcc_softmax_masked,
+            'MSE_voxOcc_softmax_masked': loss.MSE_voxOcc_softmax_masked,
+            'MSE_voxOcc_softmax_masked_totE': loss.MSE_voxOcc_softmax_masked_totE,
             'NLL_voxOcc_softmax_masked_inference': loss.NLL_voxOcc_softmax_masked_inference,
             'CrossEntropy': loss.CrossEntropy,
+            'semanticSegmentationCrossEntropy': loss.semanticSegmentationCrossEntropy,
             }
 
 def init_layers(layerDictList, in_feat, D):
@@ -184,7 +187,13 @@ def init_layers(layerDictList, in_feat, D):
                                      layerDict['featureColumn'])
         elif layerDict['type'] == 'VoxelOccupancyHead':
             layer = blocks.VoxelOccupancyHead(layer_in_feat)
-            layer_in_feat = 4
+            layer_in_feat = 3
+        elif layerDict['type'] == 'VoxelOccupancyHeadDeterministic':
+            layer = blocks.VoxelOccupancyHeadDeterministic(layer_in_feat)
+            layer_in_feat = 2
+        elif layerDict['type'] == 'SemanticSegmentationHead':
+            layer = blocks.SemanticSegmentationHead(layer_in_feat)
+            layer_in_feat = 1
 
         yield layer
         
@@ -331,7 +340,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                         self.training_report(loss)
                 
                         # save a checkpoint of the model every 10% of an epoch
-                        remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
+                        # remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
+                        remainder = (self.n_iter/dataLoader.batchesPerEpoch)%1
                         if remainder < prevRemainder:
                             try:
                                 self.log_manager.log_state()
@@ -410,7 +420,9 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             loss = self.criterion(output, truth)
 
             if accuracy:
-                prediction = torch.argmax(output.features, dim = 1)
+                prediction = torch.sigmoid(output.features[:,0]) > 0.5
+                truth = truth.features[:,0]
+                print ("truth mean", torch.mean(truth))
                 thisAccuracy = (sum(prediction == truth)/len(prediction))# .cpu()
                 accList.append(thisAccuracy.item())
                 pbar.set_description("loss: "+str(round(loss.item(), 4)) + \
