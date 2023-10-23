@@ -122,39 +122,39 @@ class array_to_sparseTensor(transform):
                                   coordinate_manager = larpix.coordinate_manager,
                                 )
         
-        print ()
-        print ("larpix:", hitList[0].shape)
-        print ("larpix ST:", larpix.coordinates.shape)
-        print ("unique larpix ST:", torch.unique(larpix.coordinates.cpu(), dim = 0).shape)
-        print ("edep:", edepList[0].shape)
-        print ("edep ST:", edep.coordinates.shape)
-        print ("unique edep ST:", torch.unique(edep.coordinates.cpu(), dim = 0).shape)
+        # print ()
+        # print ("larpix:", hitList[0].shape)
+        # print ("larpix ST:", larpix.coordinates.shape)
+        # print ("unique larpix ST:", torch.unique(larpix.coordinates.cpu(), dim = 0).shape)
+        # print ("edep:", edepList[0].shape)
+        # print ("edep ST:", edep.coordinates.shape)
+        # print ("unique edep ST:", torch.unique(edep.coordinates.cpu(), dim = 0).shape)
 
-        print ("mean larpix coords:", torch.mean(larpix.coordinates.float(), dim = 0))
-        print ("mean edep coords:", torch.mean(edep.coordinates.float(), dim = 0))
+        # print ("mean larpix coords:", torch.mean(larpix.coordinates.float(), dim = 0))
+        # print ("mean edep coords:", torch.mean(edep.coordinates.float(), dim = 0))
         
-        print ("larpixes not in edep:")
-        nIn = 0
-        nOut = 0
-        for thisHitCoord in larpix.coordinates:
-            if torch.any(torch.all(thisHitCoord == edep.coordinates, dim=1)) == 0:
-                # print (thisHitCoord)
-                nOut += 1
-            else:
-                nIn += 1
-        print ("nIn:", nIn, "nOut:", nOut)
-        print ("edeps not in inf:")
-        nIn = 0
-        nOut = 0
-        for thisEdepCoord in edep.coordinates:
-            # if thisEdepCoord not in list(larpix.coordinates):
-            # print (thisEdepCoord == larpix.coordinates)
-            if torch.any(torch.all(thisEdepCoord == larpix.coordinates, dim=1)) == 0:
-                # print (thisEdepCoord)
-                nOut += 1
-            else:
-                nIn += 1
-        print ("nIn:", nIn, "nOut:", nOut)
+        # print ("larpixes not in edep:")
+        # nIn = 0
+        # nOut = 0
+        # for thisHitCoord in larpix.coordinates:
+        #     if torch.any(torch.all(thisHitCoord == edep.coordinates, dim=1)) == 0:
+        #         # print (thisHitCoord)
+        #         nOut += 1
+        #     else:
+        #         nIn += 1
+        # print ("nIn:", nIn, "nOut:", nOut)
+        # print ("edeps not in inf:")
+        # nIn = 0
+        # nOut = 0
+        # for thisEdepCoord in edep.coordinates:
+        #     # if thisEdepCoord not in list(larpix.coordinates):
+        #     # print (thisEdepCoord == larpix.coordinates)
+        #     if torch.any(torch.all(thisEdepCoord == larpix.coordinates, dim=1)) == 0:
+        #         # print (thisEdepCoord)
+        #         nOut += 1
+        #     else:
+        #         nIn += 1
+        # print ("nIn:", nIn, "nOut:", nOut)
         # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
         #                              coordinate_map_key = larpix.coordinate_map_key,
         #                              coordinate_manager = larpix.coordinate_manager)
@@ -164,10 +164,10 @@ class array_to_sparseTensor(transform):
         # larpix = larpix + EdepPad # + GenericPad
         edep = edep + EdepPad # + GenericPad
 
-        print ("larpix ST:", larpix.coordinates.shape)
-        print ("unique larpix ST:", torch.unique(larpix.coordinates.cpu(), dim = 0).shape)
-        print ("edep ST:", edep.coordinates.shape)
-        print ("unique edep ST:", torch.unique(edep.coordinates.cpu(), dim = 0).shape)
+        # print ("larpix ST:", larpix.coordinates.shape)
+        # print ("unique larpix ST:", torch.unique(larpix.coordinates.cpu(), dim = 0).shape)
+        # print ("edep ST:", edep.coordinates.shape)
+        # print ("unique edep ST:", torch.unique(edep.coordinates.cpu(), dim = 0).shape)
             
         return larpix, edep
 
@@ -490,9 +490,6 @@ class array_to_sparseTensor_semanticSegmentation(transform):
 
         EdepPadCoordTensors = []
         EdepPadFeatureTensors = []
-
-        # GenericPadCoordTensors = []
-        # GenericPadFeatureTensors = []
     
         for inf, edep in zip(infList, edepList):
         
@@ -535,12 +532,7 @@ class array_to_sparseTensor_semanticSegmentation(transform):
 
             infPadCoords = edepCoords
             infPadFeature = torch.zeros((infPadCoords.shape[0], 1))
-            # print (edepCoords, infCoords)
-            # for thisInfPadCoord in infCoords:
-            #     # print (thisInfPadCoord)
-            #     if thisInfPadCoord in edepCoords:
-            #         print (thisInfPadCoord)
-        
+
             infPadCoordTensors.append(infPadCoords)
             infPadFeatureTensors.append(infPadFeature)
 
@@ -549,12 +541,6 @@ class array_to_sparseTensor_semanticSegmentation(transform):
         
             EdepPadCoordTensors.append(EdepPadCoords)
             EdepPadFeatureTensors.append(EdepPadFeature)
-        
-            # GenericPadCoords = infCoords # add to this list everything +/- 1 in each dimension
-            # GenericPadFeature = torch.zeros((GenericPadCoords.shape[0], 1))
-
-            # GenericPadCoordTensors.append(GenericPadCoords)
-            # GenericPadFeatureTensors.apend(GenericPadFeature)
         
         infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors, 
                                                         infFeatureTensors,
@@ -572,20 +558,12 @@ class array_to_sparseTensor_semanticSegmentation(transform):
                                                                 EdepPadFeatureTensors,
                                                                 dtype = torch.int32)
             
-        # GenericPadCoords, GenericPadFeature = ME.utils.sparse_collate(GenericPadCoordTensors,
-        #                                                               GenericPadFeatureTensors,
-        #                                                               dtype = torch.int32)
-        
         inf = ME.SparseTensor(features = infFeature.to(device),
                               coordinates = infCoords.to(device))
         edep = ME.SparseTensor(features = edepFeature.to(device),
                                coordinates = edepCoords.to(device),
                                coordinate_manager = inf.coordinate_manager,
                                )
-        # infPad = ME.SparseTensor(features = infPadFeature.to(device),
-        #                          coordinate_map_key = edep.coordinate_map_key,
-        #                          coordinate_manager = inf.coordinate_manager,
-        #                      )
         infPad = ME.SparseTensor(features = infPadFeature.to(device),
                                  coordinates = edepCoords.to(device),
                                  coordinate_manager = inf.coordinate_manager,
@@ -594,38 +572,22 @@ class array_to_sparseTensor_semanticSegmentation(transform):
                                   coordinate_map_key =  inf.coordinate_map_key,
                                   coordinate_manager = inf.coordinate_manager,
                               )
-
-        print (inf.coordinates.shape, edep.coordinates.shape)
-        print (torch.unique(inf.coordinates).shape, torch.unique(edep.coordinates).shape)
-        print ("infs not in edep:")
-        nIn = 0
-        nOut = 0
-        for thisInfCoord in inf.coordinates:
-            # # print (thisInfCoord)
-            # if thisInfCoord in inf.coordinates:
-            if thisInfCoord not in edep.coordinates:
-                nOut += 1
-                print (thisInfCoord)
-            else:
-                nIn += 1
-        print ("nIn:", nIn, "nOut:", nOut)
-        print ("edeps not in inf:")
-        nIn = 0
-        nOut = 0
-        for thisInfCoord in edep.coordinates:
-            if thisInfCoord not in inf.coordinates:
-                nOut += 1
-                print (thisInfCoord)
-                    # print ("got one!")
-            else:
-                nIn += 1
-        print ("nIn:", nIn, "nOut:", nOut)
-            
-
-        # GenericPad = ME.SparseTensor(features = GenericPadFeature.to(device),
-        #                              coordinate_map_key = larpix.coordinate_map_key,
-        #                              coordinate_manager = larpix.coordinate_manager)
         
+        # print ("infs not in edep:")
+        # nIn = 0
+        # nOut = 0
+        # for thisInfCoord in inf.coordinates:
+        #     if torch.any(torch.all(thisInfCoord == edep.coordinates, dim=1)) == 0:
+        #         print (thisInfCoord)
+        #         minDist = 1.e9
+        #         minLabel = None
+        #         for thisEdepCoord in edep.coordinates:
+        #             print (thisEdepCoord - thisInfCoord)
+        #         nOut += 1
+        #     else:
+        #         nIn += 1
+        # print ("nIn:", nIn, "nOut:", nOut)
+
         inf = inf + infPad # + GenericPad
         edep = edep + EdepPad # + GenericPad
             
