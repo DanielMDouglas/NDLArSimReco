@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 import numpy as np
 
 class loss:
@@ -478,4 +480,109 @@ class semanticSegmentationCrossEntropy (loss):
         return truth.features[:,0]
         
     def loss(self, truth, output):
-        return torch.nn.functional.binary_cross_entropy_with_logits(output, truth)
+        mask = truth >= 0
+        print (truth[mask])
+        print (output[mask])
+        print (torch.sigmoid(output[mask]))
+        return torch.nn.functional.binary_cross_entropy_with_logits(output[mask], truth[mask])
+
+class semanticSegmentationNLL (loss):
+    def feature_map(self, outputTensor):
+        return (outputTensor.features[:,0],
+                outputTensor.features[:,1],
+                outputTensor.features[:,2],
+                outputTensor.features[:,3]) 
+                
+    def truth_map(self, truth):
+        return truth.features[:,0]
+        
+    def loss(self, truth, *output):
+        isTrack, sigma_isTrack, isShower, sigma_isShower = output
+        mask = truth >= 0 # mask out voxels where there is no g.t. ( label = -1 )
+
+        truth = truth[mask]
+
+        isTrack = isTrack[mask]
+        sigma_isTrack = sigma_isTrack[mask]
+        isShower = isShower[mask]
+        sigma_isShower = sigma_isShower[mask]
+
+        loc = torch.softmax(torch.stack([isTrack, isShower]), 0)
+        # loc = torch.stack([0.75*torch.ones_like(isTrack), 0.25*torch.ones_like(isShower)])
+        # scale = torch.exp(torch.stack([sigma_isTrack, sigma_isShower]))
+        eps = 1.e-2
+        scale = torch.abs(torch.stack([sigma_isTrack, sigma_isShower])) + eps
+        # scale = (0.1*torch.abs(torch.stack([0.5*torch.ones_like(sigma_isTrack), 1*torch.ones_like(sigma_isShower)])) + eps)
+        predDist = torch.distributions.normal.Normal(loc = loc,
+                                                     scale = scale)
+
+        one_hot = torch.nn.functional.one_hot(truth.long()).T
+        # print (predDist.log_prob(one_hot))
+        # print (truth)
+        # print (one_hot)
+        # print (loc)
+        # print (scale)
+        NLL = -torch.mean(predDist.log_prob(one_hot))
+        return NLL
+
+class semanticSegmentationNLL_simple (loss):
+    def feature_map(self, outputTensor):
+        return (outputTensor.features[:,0],
+                outputTensor.features[:,1]) 
+                
+    def truth_map(self, truth):
+        return truth.features[:,0]
+        
+    def loss(self, truth, *output):
+        isShower, sigma_isShower = output
+        mask = truth >= 0 # mask out voxels where there is no g.t. ( label = -1 )
+
+        truth = truth[mask]
+
+        isShower = isShower[mask]
+        sigma_isShower = sigma_isShower[mask]
+
+        loc = torch.sigmoid(isShower)
+        eps = 1.e-3
+        # scale = 0.5*torch.abs(sigma_isShower) + eps
+        scale = 0.5*torch.sigmoid(sigma_isShower) + eps
+        # scale = 0.1*torch.ones_like(sigma_isShower) + eps
+        predDist = torch.distributions.normal.Normal(loc = loc,
+                                                     scale = scale)
+
+        sharpness = torch.mean(scale)
+        NLL = -torch.mean(predDist.log_prob(truth))
+
+        loss = NLL + sharpness
+
+        return loss
+
+class semanticSegmentation_stochasticNLL (loss):
+    throwDist = torch.distributions.normal.Normal(loc = 0,
+                                                  scale = 1)
+    def feature_map(self, outputTensor):
+        return (outputTensor.features[:,0],
+                outputTensor.features[:,1]) 
+                
+    def truth_map(self, truth):
+        return truth.features[:,0]
+        
+    def loss(self, truth, *output):
+        isShower, sigma_isShower = output
+        mask = truth >= 0 # mask out voxels where there is no g.t. ( label = -1 )
+
+        truth = truth[mask]
+
+        isShower = isShower[mask]
+        sigma_isShower = sigma_isShower[mask]
+
+        eps = 1.e-3
+        scale = torch.abs(sigma_isShower) + eps
+ 
+        throwDir = self.throwDist.rsample(sigma_isShower.shape).to(device)
+        
+        throw = isShower + throwDir*scale
+
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(throw, truth)
+        
+        return loss

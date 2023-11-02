@@ -395,3 +395,93 @@ class SemanticSegmentationHead(torch.nn.Module):
 
         return classPred
 
+class SemanticSegmentationHeadPNN(torch.nn.Module):
+    def __init__(self, in_features, name = 'SemanticSegmentationHeadPNN'):
+        super(SemanticSegmentationHeadPNN, self).__init__()
+
+        self.in_features = in_features
+
+        nFilters = in_features*4
+        kernelSize = 3
+        self.head = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = nFilters,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = nFilters,
+                out_channels = 4,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+    def forward(self, x):
+        # print ('head output', self.head(x))
+        # classPred = torch.sigmoid(self.head(x))
+        # print ('class pred', classPred)
+        classPred = self.head(x)
+
+        # newTensor = ME.SparseTensor(features = torch.concat((valueOut.features,
+        #                                                      occupancyOut.features),
+        #                                                     axis = 1),
+        #                             coordinate_map_key = x.coordinate_map_key,
+        #                             coordinate_manager = x.coordinate_manager,
+        # )
+
+        return classPred
+
+class SemanticSegmentationHeadPNN_simple(torch.nn.Module):
+    def __init__(self, in_features, name = 'SemanticSegmentationHeadPNN_simple'):
+        super(SemanticSegmentationHeadPNN_simple, self).__init__()
+
+        self.in_features = in_features
+
+        nFilters = in_features*4
+        kernelSize = 3
+        self.head = nn.Sequential(
+            ME.MinkowskiConvolution(
+                in_channels = in_features,
+                out_channels = nFilters,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ResNetBlock(
+                nFilters,
+                nFilters,
+                kernelSize,
+            ),
+            ME.MinkowskiConvolution(
+                in_channels = nFilters,
+                out_channels = 2,
+                kernel_size = kernelSize,
+                stride = 1,
+                dimension = 3,
+            ),
+        )
+
+    def forward(self, x):
+        classPred = self.head(x)
+
+        return classPred
+

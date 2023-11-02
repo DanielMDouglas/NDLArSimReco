@@ -509,7 +509,7 @@ class array_to_sparseTensor_semanticSegmentation(transform):
             edepX = xFlip*edep[xKey]
             edepY = yFlip*edep[yKey]
             edepZ = edep['z']
-            semantic_label = edep['semantic_label']
+            semantic_label = edep['semantic_label'] + 1
 
             edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
             edepFeature = torch.FloatTensor(np.array([semantic_label], dtype = np.int32)).T
@@ -573,23 +573,113 @@ class array_to_sparseTensor_semanticSegmentation(transform):
                                   coordinate_manager = inf.coordinate_manager,
                               )
         
-        # print ("infs not in edep:")
-        # nIn = 0
-        # nOut = 0
-        # for thisInfCoord in inf.coordinates:
-        #     if torch.any(torch.all(thisInfCoord == edep.coordinates, dim=1)) == 0:
-        #         print (thisInfCoord)
-        #         minDist = 1.e9
-        #         minLabel = None
-        #         for thisEdepCoord in edep.coordinates:
-        #             print (thisEdepCoord - thisInfCoord)
-        #         nOut += 1
-        #     else:
-        #         nIn += 1
-        # print ("nIn:", nIn, "nOut:", nOut)
-
         inf = inf + infPad # + GenericPad
         edep = edep + EdepPad # + GenericPad
+        edep.features[:] -= 1
+            
+        return inf, edep
+
+class array_to_sparseTensor_semanticSegmentation_homog(transform):
+    def __call__(self, infList, edepList):
+        ME.clear_global_coordinate_manager()
+
+        infCoordTensors = []
+        infFeatureTensors = []
+    
+        edepCoordTensors = []
+        edepFeatureTensors = []
+
+        infPadCoordTensors = []
+        infPadFeatureTensors = []
+
+        EdepPadCoordTensors = []
+        EdepPadFeatureTensors = []
+    
+        for inf, edep in zip(infList, edepList):
+        
+            if self.augment:
+                diagFlip = np.random.choice([False, True])
+                if diagFlip:
+                    xKey, yKey = 'y', 'x'
+                else:
+                    xKey, yKey = 'x', 'y'
+                xFlip = np.random.choice([-1, 1])
+                yFlip = np.random.choice([-1, 1])
+            else:
+                xKey, yKey = 'x', 'y'
+                xFlip = 1
+                yFlip = 1
+
+            edepX = xFlip*edep[xKey]
+            edepY = yFlip*edep[yKey]
+            edepZ = edep['z']
+            semantic_label = edep['semantic_label'] + 1
+
+            edepCoords = torch.FloatTensor(np.array([edepX, edepY, edepZ])).T
+            edepFeature = torch.FloatTensor(np.array([semantic_label], dtype = np.int32)).T
+                
+            edepCoordTensors.append(edepCoords)
+            edepFeatureTensors.append(edepFeature)
+
+            # hitsX, hitsY, hitsZ, hitsQ = hits
+            infX = xFlip*inf[xKey]
+            infY = yFlip*inf[yKey]
+            infZ = inf['z']
+            infdE = inf['dE']
+            infdE_err = np.ones_like(infdE)
+
+            infCoords = torch.FloatTensor(np.array([infX, infY, infZ])).T
+            infFeature = torch.FloatTensor(np.array([infdE, infdE_err])).T
+            
+            infCoordTensors.append(infCoords)
+            infFeatureTensors.append(infFeature)
+
+            infPadCoords = edepCoords
+            infPadFeature = torch.zeros((infPadCoords.shape[0], 1))
+
+            infPadCoordTensors.append(infPadCoords)
+            infPadFeatureTensors.append(infPadFeature)
+
+            EdepPadCoords = infCoords
+            EdepPadFeature = torch.zeros((EdepPadCoords.shape[0], 1))
+        
+            EdepPadCoordTensors.append(EdepPadCoords)
+            EdepPadFeatureTensors.append(EdepPadFeature)
+        
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors, 
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
+                
+        edepCoords, edepFeature = ME.utils.sparse_collate(edepCoordTensors, 
+                                                          edepFeatureTensors,
+                                                          dtype = torch.int32)
+    
+        infPadCoords, infPadFeature = ME.utils.sparse_collate(infPadCoordTensors, 
+                                                              infPadFeatureTensors,
+                                                              dtype = torch.int32)
+
+        EdepPadCoords, EdepPadFeature = ME.utils.sparse_collate(EdepPadCoordTensors, 
+                                                                EdepPadFeatureTensors,
+                                                                dtype = torch.int32)
+            
+        inf = ME.SparseTensor(features = infFeature.to(device),
+                              coordinates = infCoords.to(device))
+        edep = ME.SparseTensor(features = edepFeature.to(device),
+                               coordinates = edepCoords.to(device),
+                               coordinate_manager = inf.coordinate_manager,
+                               )
+        infPad = ME.SparseTensor(features = infPadFeature.to(device),
+                                 coordinates = edepCoords.to(device),
+                                 coordinate_manager = inf.coordinate_manager,
+        )
+        EdepPad = ME.SparseTensor(features = EdepPadFeature.to(device),
+                                  coordinate_map_key =  inf.coordinate_map_key,
+                                  coordinate_manager = inf.coordinate_manager,
+                              )
+        
+        inf = inf + infPad # + GenericPad
+        edep = edep + EdepPad # + GenericPad
+        edep.features[:] -= 1
             
         return inf, edep
 
@@ -603,6 +693,7 @@ class TransformFactoryClass:
            'array_to_sparseTensor_totE': array_to_sparseTensor_totE,
            'array_to_sparseTensor_totE_homog': array_to_sparseTensor_totE_homog,
            'array_to_sparseTensor_semanticSegmentation': array_to_sparseTensor_semanticSegmentation,
+           'array_to_sparseTensor_semanticSegmentation_homog': array_to_sparseTensor_semanticSegmentation_homog,
            }
     def __getitem__(self, req):
         if req in self.map:

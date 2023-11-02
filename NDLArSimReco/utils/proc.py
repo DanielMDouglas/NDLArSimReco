@@ -7,6 +7,7 @@
 
 import numpy as np
 import h5py
+import particle
 
 from LarpixParser import hit_parser as HitParser
 from LarpixParser import event_parser as EvtParser
@@ -44,11 +45,12 @@ output_dtypes = {"hits": np.dtype([("eventID", "u4"),
                                    ("semantic_label", "u4")],
                                   align = True),
                  "evinfo": np.dtype([("eventID", "u4"),
-                                     ("primaryPID", "i4")],
+                                     ("primaryPID", "i4"),
+                                     ("primaryE", "f4")],
                                     align = True),
                  }
 
-def get_primary_PID(dl, event_id):
+def get_primary(dl, event_id):
     t0 = dl.t0_grp[event_id][0]
 
     ti = t0 + dl.run_config['time_interval'][0]/dl.run_config['CLOCK_CYCLE']
@@ -74,7 +76,7 @@ def get_primary_PID(dl, event_id):
     traj_ev = dl.traj[traj_mask]
 
     primMask = traj_ev['parentID'] == -1
-    return traj_ev['pdgId'][primMask]
+    return traj_ev[primMask]
 
 def write_to_output(outfile, evHits, evEdep, evEv):
     nHits_prev = len(outfile['hits'])
@@ -107,7 +109,13 @@ def main(args):
 
     for event_id in range(nEvents):
         hits, voxels = dl.load_image(event_id)
-        primPID = get_primary_PID(dl, event_id)
+        prim = get_primary(dl, event_id)
+        primPID = prim['pdgId']
+
+        primM = np.array([particle.Particle.from_pdgid(pid).mass
+                          for pid in primPID])
+        primP2 = np.sum(np.power(prim['pxyz_start'], 2), axis = 1)
+        primE = np.sqrt(primP2 + np.power(primM, 2))
 
         nHits_ev = len(hits[0])
         evHits = np.empty(nHits_ev, dtype = output_dtypes['hits'])
@@ -139,6 +147,7 @@ def main(args):
         evEv = np.empty(nEv_ev, dtype = output_dtypes['evinfo'])
         evEv['eventID'] = event_id*np.ones(nEv_ev)
         evEv['primaryPID'] = np.array(primPID)
+        evEv['primaryE'] = np.array(primE)
 
         print (event_id)
         print ("nHits", nHits_ev)
@@ -175,5 +184,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    print(args)    
     main(args)

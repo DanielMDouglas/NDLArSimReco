@@ -40,6 +40,9 @@ lossDict = {'NLL': loss.NLL,
             'NLL_voxOcc_softmax_masked_inference': loss.NLL_voxOcc_softmax_masked_inference,
             'CrossEntropy': loss.CrossEntropy,
             'semanticSegmentationCrossEntropy': loss.semanticSegmentationCrossEntropy,
+            'semanticSegmentationNLL': loss.semanticSegmentationNLL,
+            'semanticSegmentationNLL_simple': loss.semanticSegmentationNLL_simple,
+            'semanticSegmentation_stochasticNLL': loss.semanticSegmentation_stochasticNLL,
             }
 
 def init_layers(layerDictList, in_feat, D):
@@ -193,6 +196,12 @@ def init_layers(layerDictList, in_feat, D):
             layer_in_feat = 2
         elif layerDict['type'] == 'SemanticSegmentationHead':
             layer = blocks.SemanticSegmentationHead(layer_in_feat)
+            layer_in_feat = 1
+        elif layerDict['type'] == 'SemanticSegmentationHeadPNN':
+            layer = blocks.SemanticSegmentationHeadPNN(layer_in_feat)
+            layer_in_feat = 1
+        elif layerDict['type'] == 'SemanticSegmentationHeadPNN_simple':
+            layer = blocks.SemanticSegmentationHeadPNN_simple(layer_in_feat)
             layer_in_feat = 1
 
         yield layer
@@ -421,6 +430,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
             if accuracy:
                 prediction = torch.sigmoid(output.features[:,0]) > 0.5
+                # prediction = output.features[:,0] < output.features[:,2]
                 truth = truth.features[:,0]
                 print ("truth mean", torch.mean(truth))
                 thisAccuracy = (sum(prediction == truth)/len(prediction))# .cpu()
