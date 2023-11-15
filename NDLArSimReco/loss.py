@@ -464,10 +464,10 @@ class NLL_voxOcc_softmax_masked_inference (loss):
 
 class CrossEntropy (loss):
     def feature_map(self, outputTensor):
-        return outputTensor.features,
+        return outputTensor.features[:,0],
 
     def truth_map(self, truth):
-        return truth
+        return truth.features[:,0]
         
     def loss(self, truth, output):
         return nn.CrossEntropyLoss()(output, truth)

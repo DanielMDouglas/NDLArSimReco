@@ -429,10 +429,10 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             loss = self.criterion(output, truth)
 
             if accuracy:
-                prediction = torch.sigmoid(output.features[:,0]) > 0.5
-                # prediction = output.features[:,0] < output.features[:,2]
-                truth = truth.features[:,0]
-                print ("truth mean", torch.mean(truth))
+                trueLabelMask = truth.features[:,0] >= 0
+                truth = truth.features[trueLabelMask,0]
+                prediction = torch.sigmoid(output.features[trueLabelMask,0]) > 0.5
+
                 thisAccuracy = (sum(prediction == truth)/len(prediction))# .cpu()
                 accList.append(thisAccuracy.item())
                 pbar.set_description("loss: "+str(round(loss.item(), 4)) + \
