@@ -152,9 +152,7 @@ class DataLoader (GenericDataLoader):
 
 class DataLoaderWithEvinfo (GenericDataLoader):
     """
-    This version of the DataLoader class is meant to parse the pared down
-    data format.  It should be faster, since all but the needed information
-    has been removed.
+    Dataloader which also passes forward the evinfo branch of the pared format
     """            
     def load(self, transform = None):
         for fileIndex in self.fileLoadOrder:
@@ -203,37 +201,8 @@ class DataLoaderWithEvinfo (GenericDataLoader):
 
 class ClassifierDataLoader (GenericDataLoader):
     """
-    This instance of the DataLoader class is mean for training a classifier
-    network.  It should yield inferred edep-sim images (possibly G.T. images
-    as well), alongside the true primary particle type
+    Dataloader which loads upstream inferences and image primary PID
     """
-    def load(self, transform = None):
-        if len(self.fileLoadOrder) == 0: 
-            self.genFileLoadOrder()
-        for fileIndex in self.fileLoadOrder:
-            self.loadNextFile(fileIndex)
-            if len(self.sampleLoadOrder) == 0: 
-                self.genSampleLoadOrder()
-            inputs = []
-            truths = []
-            for imgIndex in self.sampleLoadOrder:
-                theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) <= 2:
-                    continue
-                else:
-                    inputs.append(theseInpts)
-                    truths.append(theseTruths)
-
-                if len(inputs) == self.batchSize:
-                    if transform:
-                        yield transform(inputs, truths)
-                    else:
-                        yield inputs, truths
-                    inputs = []
-                    truths = []
-            self.sampleLoadOrder = np.empty(0,)
-        self.fileLoadOrder = np.empty(0,)
-
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
         event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
@@ -250,37 +219,8 @@ class ClassifierDataLoader (GenericDataLoader):
 
 class EnergyRegressionDataLoader (GenericDataLoader):
     """
-    This instance of the DataLoader class is mean for training a classifier
-    network.  It should yield inferred edep-sim images (possibly G.T. images
-    as well), alongside the true primary particle type
+    Dataloader which loads upstream inference and event primary energy
     """
-    def load(self, transform = None):
-        if len(self.fileLoadOrder) == 0: 
-            self.genFileLoadOrder()
-        for fileIndex in self.fileLoadOrder:
-            self.loadNextFile(fileIndex)
-            if len(self.sampleLoadOrder) == 0: 
-                self.genSampleLoadOrder()
-            inputs = []
-            truths = []
-            for imgIndex in self.sampleLoadOrder:
-                theseInpts, theseTruths = self.load_image(imgIndex)
-                if len(theseInpts) <= 2:
-                    continue
-                else:
-                    inputs.append(theseInpts)
-                    truths.append(theseTruths)
-
-                if len(inputs) == self.batchSize:
-                    if transform:
-                        yield transform(inputs, truths)
-                    else:
-                        yield inputs, truths
-                    inputs = []
-                    truths = []
-            self.sampleLoadOrder = np.empty(0,)
-        self.fileLoadOrder = np.empty(0,)
-
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
         event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
@@ -295,9 +235,8 @@ class EnergyRegressionDataLoader (GenericDataLoader):
 
 class ClassifierDataLoaderGT (GenericDataLoader):
     """
-    This instance of the DataLoader class is mean for training a classifier
-    network.  It should yield inferred edep-sim images (possibly G.T. images
-    as well), alongside the true primary particle type
+    Dataloader which loads ground truth image and primary particle PID
+    (for validating downstream classifier)
     """
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
@@ -313,8 +252,8 @@ class ClassifierDataLoaderGT (GenericDataLoader):
 
 class ClassifierDataLoaderLNDSM (GenericDataLoader):
     """
-    This instance of the DataLoader class is mean for training a classifier
-    network.  It should yield larnd-sim images, alongside the true primary particle type
+    Dataloader which loads detector output image and primary particle PID
+    (for validating downstream classifier)
     """
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
@@ -328,7 +267,6 @@ class ClassifierDataLoaderLNDSM (GenericDataLoader):
 
         return self.hits_ev, self.evinfo_ev
 
-        
 class RawDataLoader (GenericDataLoader):
     """
     This version of the DataLoader class is meant to parse the raw
@@ -484,9 +422,7 @@ class RawDataLoader (GenericDataLoader):
 
 class DataLoader_semanticSegmentation (GenericDataLoader):
     """
-    This version of the DataLoader class is meant to parse the pared down
-    data format.  It should be faster, since all but the needed information
-    has been removed.
+    Dataloader which loads upstream inferences and voxel semantic labels
     """            
     def load_image(self, eventIndex):
         # load a given event from the currently loaded file
@@ -501,9 +437,6 @@ class DataLoader_semanticSegmentation (GenericDataLoader):
         inf_mask = self.currentFile['inference']['eventID'] == event_id
         self.inf_ev = self.currentFile['inference'][inf_mask]
 
-        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
-        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
-        
         return self.inf_ev, self.edep_ev
 
 
@@ -522,4 +455,5 @@ class DataLoaderFactoryClass:
             return self.map[req]
         else:
             return DataLoader
+
 dataLoaderFactory = DataLoaderFactoryClass()
