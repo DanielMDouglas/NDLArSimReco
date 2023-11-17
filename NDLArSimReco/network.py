@@ -39,6 +39,7 @@ lossDict = {'NLL': loss.NLL,
             'MSE_voxOcc_softmax_masked_totE': loss.MSE_voxOcc_softmax_masked_totE,
             'NLL_voxOcc_softmax_masked_inference': loss.NLL_voxOcc_softmax_masked_inference,
             'CrossEntropy': loss.CrossEntropy,
+            'CrossEntropy_stochastic': loss.CrossEntropy_stochastic,
             'semanticSegmentationCrossEntropy': loss.semanticSegmentationCrossEntropy,
             'semanticSegmentationNLL': loss.semanticSegmentationNLL,
             'semanticSegmentationNLL_simple': loss.semanticSegmentationNLL_simple,
@@ -429,9 +430,14 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
             loss = self.criterion(output, truth)
 
             if accuracy:
-                trueLabelMask = truth.features[:,0] >= 0
-                truth = truth.features[trueLabelMask,0]
-                prediction = torch.sigmoid(output.features[trueLabelMask,0]) > 0.5
+                # trueLabelMask = truth.features[:,0] >= 0
+                # truth = truth.features[trueLabelMask,0]
+                # prediction = torch.sigmoid(output.features[trueLabelMask,0]) > 0.5
+                # means = output.features[:,::2]
+                means = output.features
+                print (output.features.shape)
+                prediction = torch.argmax(means, dim = -1)
+                print (prediction.shape)
 
                 thisAccuracy = (sum(prediction == truth)/len(prediction))# .cpu()
                 accList.append(thisAccuracy.item())

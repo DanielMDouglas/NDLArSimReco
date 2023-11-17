@@ -389,7 +389,6 @@ class MSE_voxOcc_softmax_masked_totE (loss):
         trueOccupancy = (truth > 0).float()
         
         return nn.functional.binary_cross_entropy(inferredOccupancy, trueOccupancy)
-
     def MSELoss(self, truth, mean, isFilledVoxel):
         truthMask = truth > 0
         maskedMean = mean[truthMask]
@@ -463,14 +462,49 @@ class NLL_voxOcc_softmax_masked_inference (loss):
         return NLL
 
 class CrossEntropy (loss):
+    def __call__(self, output, truth):
+        return self.loss(self.truth_map(truth),
+                         self.feature_map(output))
+
     def feature_map(self, outputTensor):
-        return outputTensor.features[:,0],
+        # return outputTensor.features[:,0],
+        return outputTensor.features
 
     def truth_map(self, truth):
-        return truth.features[:,0]
+        return truth
         
     def loss(self, truth, output):
         return nn.CrossEntropyLoss()(output, truth)
+
+class CrossEntropy_stochastic (loss):
+    """
+    This version of the cross-entropy loss, the output is 
+    interpreted as an array of (N, 2*C) where N is the batch
+    size and C is the number of classes.  For each class,
+    a mean and std are interleaved within the array
+    """
+    throwDist = torch.distributions.normal.Normal(loc = 0,
+                                                  scale = 1)
+    def __call__(self, output, truth):
+        return self.loss(self.truth_map(truth),
+                         self.feature_map(output))
+    def feature_map(self, outputTensor):
+        return outputTensor.features
+    def truth_map(self, truth):
+        return truth
+        
+    def loss(self, truth, output):
+        meanScore = output[:,::2]
+        uncScore = output[:,1::2]
+
+        eps = 1.e-3
+        scale = torch.abs(uncScore) + eps
+
+        throwDir = self.throwDist.rsample(scale.shape).to(device)
+
+        throw = meanScore + throwDir*scale
+
+        return nn.CrossEntropyLoss()(throw, truth)
 
 class semanticSegmentationCrossEntropy (loss):
     def feature_map(self, outputTensor):
@@ -481,9 +515,6 @@ class semanticSegmentationCrossEntropy (loss):
         
     def loss(self, truth, output):
         mask = truth >= 0
-        print (truth[mask])
-        print (output[mask])
-        print (torch.sigmoid(output[mask]))
         return torch.nn.functional.binary_cross_entropy_with_logits(output[mask], truth[mask])
 
 class semanticSegmentationNLL (loss):

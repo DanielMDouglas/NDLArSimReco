@@ -65,6 +65,7 @@ class GenericDataLoader:
         # file has been fully iterated through
         self.currentFileName = self.fileList[fileIndex]
         self.currentFile = h5py.File(self.currentFileName)
+        self.sampleLoadOrder = []
         
     def setSampleLoadOrder(self, sampleLoadOrder):
         """

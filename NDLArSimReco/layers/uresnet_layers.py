@@ -416,7 +416,9 @@ class ResNetEncoder(torch.nn.Module):
             ) 
         )
 
-        self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
+        # self.featureSizesEnc = [(self.nFilters*2**i, self.nFilters*2**(i+1))
+        #                         for i in range(self.depth)]
+        self.featureSizesEnc = [(self.nFilters*(i+1), self.nFilters*(i+2))
                                 for i in range(self.depth)]
         
         self.encoding_layers = []
@@ -434,7 +436,8 @@ class ResNetEncoder(torch.nn.Module):
             )
             self.encoding_blocks.append(
                 ResNetBlock(self.featureSizesEnc[i][1],
-                            self.featureSizesEnc[i][1])
+                            self.featureSizesEnc[i][1],
+                            kernel_size = 3)
             )
         self.encoding_layers = nn.Sequential(*self.encoding_layers)
         self.encoding_blocks = nn.Sequential(*self.encoding_blocks)
