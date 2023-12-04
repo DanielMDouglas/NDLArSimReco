@@ -1,0 +1,21 @@
+trainfilePath:
+  - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/inference_train
+testfilePath:
+  - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/inference_test
+outdir: /scratch/dougl215/UResNet_trackshower_semanticSegmentation_PNN
+
+loss: semanticSegmentationNLL
+batchSize: 16
+nlr: 1.e-4
+in_feat: 2
+nEpochs: 50
+dataLoader: DataLoader_semanticSegmentation
+transform: array_to_sparseTensor_semanticSegmentation
+
+layers:
+- type: UResNetDropout
+  out_feat: 16
+  kernel_size: 5
+  dropout_depth: 10
+  depth: 12
+- type: SemanticSegmentationHeadPNN
