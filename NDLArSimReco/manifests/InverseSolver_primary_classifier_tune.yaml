@@ -1,0 +1,31 @@
+trainfilePath:
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/train
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/train_fixedLabels
+  - /sdf/group/neutrino/dougl215/classifierSamples/mix/pared
+  - /sdf/group/neutrino/dougl215/classifierSamples/mix_batch2/train
+testfilePath:
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/test
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/test_fixedLabels
+  #
+  # - /sdf/group/neutrino/dougl215/classifierSamples/mix-test/pared
+  # - /sdf/group/neutrino/dougl215/classifierSamples/mix_batch2/test
+  - /sdf/group/neutrino/dougl215/classifierSamples/mix-test_batch2/pared
+outdir: /scratch/dougl215/InverseSolver_primaryClassifier_tune
+
+loss: NLL_voxOcc_softmax_masked
+batchSize: 16
+lr: 1.e-6
+in_feat: 1
+nEpochs: 450
+dataLoader: DataLoader
+transform: array_to_sparseTensor
+
+layers:
+- type: Scaling
+  scalingFactor: 0.05
+- type: UResNetDropout
+  out_feat: 16
+  kernel_size: 5
+  dropout_depth: 10
+  depth: 12
+- type: VoxelOccupancyHead 

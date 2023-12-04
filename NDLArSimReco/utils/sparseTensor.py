@@ -145,7 +145,7 @@ class array_to_sparseTensor_class(transform):
         PIDlabel = []
     
         for inference, evinfo in zip(inferenceList, evInfoList):
-            
+
             if self.augment:
                 diagFlip = np.random.choice([False, True])
                 if diagFlip:

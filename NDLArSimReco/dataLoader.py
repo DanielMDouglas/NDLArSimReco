@@ -215,7 +215,7 @@ class ClassifierDataLoader (GenericDataLoader):
         
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
-                                          
+        
         return self.inference_ev, self.evinfo_ev
 
 class EnergyRegressionDataLoader (GenericDataLoader):

@@ -118,6 +118,10 @@ def main(args):
                                       os.path.basename(dl.currentFileName))
         print ("trying to write to output file,", outputFileName)
         
+        if os.path.exists(outputFileName):
+            print ("output exists!  Skipping...")
+            continue
+
         outfile = h5py.File(outputFileName, 'w')
 
         for key, value in output_dtypes.items():

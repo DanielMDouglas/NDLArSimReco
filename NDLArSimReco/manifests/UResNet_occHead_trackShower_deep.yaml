@@ -1,0 +1,25 @@
+trainfilePath:
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/train
+  - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/train_fixedLabels
+testfilePath:
+  # - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/test
+  - /sdf/group/neutrino/dougl215/classifierSamples/trackshower_batch2/test_fixedLabels
+outdir: /scratch/dougl215/UResNet_occHead_trackshower_deep
+
+loss: NLL_voxOcc_softmax_masked
+batchSize: 16
+lr: 1.e-6
+in_feat: 1
+nEpochs: 50
+dataLoader: DataLoader
+transform: array_to_sparseTensor
+
+layers:
+- type: Scaling
+  scalingFactor: 0.05
+- type: UResNetDropout
+  out_feat: 16
+  kernel_size: 5
+  dropout_depth: 10
+  depth: 12
+- type: VoxelOccupancyHead 

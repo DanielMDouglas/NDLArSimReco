@@ -20,6 +20,7 @@ from matplotlib.gridspec import GridSpec
 import yaml
 import os
 import tqdm
+import particle
 
 def main(args):
     with open(args.manifest) as mf:
@@ -50,14 +51,17 @@ def main(args):
     net.load_checkpoint(args.checkpoint)
     net2.load_checkpoint(args.checkpoint2)
 
-    net.MCdropout()
-    net2.MCdropout()
-    # net.eval()
-    # net2.eval()
+    # net.MCdropout()
+    # net2.MCdropout()
+    net.eval()
+    net2.eval()
     nBatches = args.nBatches
 
     transform = sparseTensor.transformFactory[manifest['transform']](augment = False)
-    pbar = tqdm.tqdm(enumerate(dl.load(transform = transform)),
+    transform2 = sparseTensor.transformFactory[manifest2['transform']](augment = False)
+    # pbar = tqdm.tqdm(enumerate(dl.load(transform = transform)),
+    #                  total = nBatches)
+    pbar = tqdm.tqdm(enumerate(dl.load()),
                      total = nBatches)
 
     truthList = []
@@ -70,30 +74,38 @@ def main(args):
         if i >= nBatches:
             break # we're done here
 
-        output = net.forward(inpt)
-        output2 = net2.forward(inpt)
-        loss = net.criterion(output, truth)
+        inpt1, truth1 = transform(inpt, truth)
+        inpt2, truth2 = transform2(inpt, truth)
 
-        truthFeat = truth
+        output = net.forward(inpt1)
+        output2 = net2.forward(inpt2)
+        loss = net.criterion(output, truth1)
+
+        truthFeat = truth1
         # mask = truthFeat != -9999
         truthFeat = truthFeat[:]
         # prediction = torch.sigmoid(output.features[:,0]) > 0.5
         # prediction2 = torch.sigmoid(output2.features[:,0]) > 0.5
 
-        prediction = torch.argmax(output.features, dim = -1)
-        prediction2 = torch.argmax(output2.features, dim = -1)
-        # prediction = torch.argmax(output.features[:,::2], dim = -1)
-        # prediction2 = torch.argmax(output2.features[:,::2], dim = -1)
+        # prediction = torch.argmax(output.features, dim = -1)
+        # prediction2 = torch.argmax(output2.features, dim = -1)
+        prediction = torch.argmax(output.features[:,::2], dim = -1)
+        prediction2 = torch.argmax(output2.features[:,::2], dim = -1)
+        # print (output.features[:,::2])
+        # print (output2.features[:,::2])
+        # print ("truth", truth1)
+        # print ("pred1", prediction)
+        # print ("pred2", prediction2)
 
-        print (sum(prediction == truthFeat)/len(prediction))
-        print (sum(prediction2 == truthFeat)/len(prediction2))
+        # print (sum(prediction == truthFeat)/len(prediction))
+        # print (sum(prediction2 == truthFeat)/len(prediction2))
         
-        print (truthFeat)
-        print (prediction)
-        truthList.append(truthFeat)
+        # print (truthFeat)
+        # print (prediction)
+        truthList.append(truthFeat.cpu().numpy())
         
-        predList.append(prediction)
-        predList2.append(prediction2)
+        predList.append(prediction.cpu().numpy())
+        predList2.append(prediction2.cpu().numpy())
 
     truthList = np.concatenate(truthList)
         
@@ -105,8 +117,10 @@ def main(args):
     #                                     display_labels=['Track', 'Shower'],
     #                                     ).plot(cmap = 'Blues',
     #                                             normalize = True)
+    labels = [r'$'+particle.Particle.from_pdgid(i).latex_name+r'$'
+              for i in [11, 22, 13, 211]]
     cm_display = ConfusionMatrixDisplay.from_predictions(truthList, predList,
-                                                         # display_labels=['Track', 'Shower'],
+                                                         display_labels=labels,
                                                          cmap = 'Blues',
                                                          normalize = 'true')
     plt.savefig('confusion_inhomog.png')
@@ -117,7 +131,7 @@ def main(args):
     #                                      ).plot(cmap = 'Blues',
     #                                             normalize = True)
     cm_display2 = ConfusionMatrixDisplay.from_predictions(truthList, predList2,
-                                                          # display_labels=['Track', 'Shower'],
+                                                          display_labels=labels,
                                                           cmap = 'Blues',
                                                           normalize = 'true')
     plt.savefig('confusion_homog.png')
