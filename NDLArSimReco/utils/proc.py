@@ -47,6 +47,7 @@ output_dtypes = {"hits": np.dtype([("eventID", "u4"),
                  "evinfo": np.dtype([("eventID", "u4"),
                                      ("primaryPID", "i4"),
                                      ("primaryE", "f4")],
+                                     ("start_dEdx", "f4")],
                                     align = True),
                  }
 
@@ -77,6 +78,27 @@ def get_primary(dl, event_id):
 
     primMask = traj_ev['parentID'] == -1
     return traj_ev[primMask]
+
+def get_most_upstream_edep_pos(tracks):
+    firstTrackMask = tracks['segment_id'] == np.min(tracks['segment_id'])
+    position = np.array([tracks['x_start'][firstTrackMask],
+                         tracks['y_start'][firstTrackMask],
+                         tracks['z_start'][firstTrackMask]])
+
+    return position
+
+def select_downstream_segments(tracks, pos, vector, distance):
+
+    segPositions = np.array([tracks['x_start'] - pos[0],
+                             tracks['y_start'] - pos[1],
+                             tracks['z_start'] - pos[2]])
+    axialDist = np.dot(vector, segPositions)
+    downstreamMask = axialDist < distance
+    inFrontMask = axialDist >= 0
+    mask = downstreamMask*inFrontMask
+
+    return tracks[mask]
+
 
 def write_to_output(outfile, evHits, evEdep, evEv):
     nHits_prev = len(outfile['hits'])
@@ -117,6 +139,18 @@ def main(args):
         primP2 = np.sum(np.power(prim['pxyz_start'], 2), axis = 1)
         primE = np.sqrt(primP2 + np.power(primM, 2))
 
+        momentum = [prim['pxyz_start'][2]/10,
+                    prim['pxyz_start'][1]/10,
+                    prim['pxyz_start'][0]/10]
+        momentumDir = momentum/np.linalg.norm(momentum)
+
+        upstreamPos = get_most_upstream_edep_pos(evTrack)
+
+        distance = 3.
+        startTrack = select_downstream_segments(evTrack, upstreamPos, momentumDir, distance)
+        
+        start_dEdx = np.sum(startTrack['dE'])/distance
+
         nHits_ev = len(hits[0])
         evHits = np.empty(nHits_ev, dtype = output_dtypes['hits'])
         evHits['eventID'] = event_id*np.ones(nHits_ev)
@@ -148,6 +182,7 @@ def main(args):
         evEv['eventID'] = event_id*np.ones(nEv_ev)
         evEv['primaryPID'] = np.array(primPID)
         evEv['primaryE'] = np.array(primE)
+        evEv['start_dEdx'] = np.array(start_dEdx)
 
         print (event_id)
         print ("nHits", nHits_ev)
