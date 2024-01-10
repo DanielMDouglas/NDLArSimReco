@@ -24,7 +24,11 @@ from .layers import uresnet_layers, blocks
 from .trainLogging import *
 from .utils import sparseTensor
 
+# epochPerCKPT = 25
+epochPerCKPT = 1
+
 lossDict = {'NLL': loss.NLL,
+            'NLL_scalar': loss.NLL_scalar,
             'NLL_moyal': loss.NLL_moyal,
             'NLL_reluError': loss.NLL_reluError,
             'NLL_reluError_masked': loss.NLL_reluError_masked,
@@ -351,7 +355,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                 
                         # save a checkpoint of the model every 10% of an epoch
                         # remainder = (self.n_iter/dataLoader.batchesPerEpoch)%0.1
-                        remainder = (self.n_iter/dataLoader.batchesPerEpoch)%1
+                        remainder = (self.n_iter/dataLoader.batchesPerEpoch + self.n_epoch)%epochPerCKPT
                         if remainder < prevRemainder:
                             try:
                                 self.log_manager.log_state()

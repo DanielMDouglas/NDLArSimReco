@@ -10,36 +10,19 @@ import particle
 from NDLArSimReco.network import ConfigurableSparseNetwork
 from NDLArSimReco.dataLoader import *
 from NDLArSimReco.utils import sparseTensor
+from NDLArSimReco.utils.proc import output_dtypes
 
 import yaml
 import os
 
-output_dtypes = {"hits": np.dtype([("eventID", "u4"),
-                                   ("x", "f4"),
-                                   ("y", "f4"),
-                                   ("z", "f4"),
-                                   ("q", "f4")],
-                                  align = True),
-                 "edep": np.dtype([("eventID", "u4"),
-                                   ("x", "f4"),
-                                   ("y", "f4"),
-                                   ("z", "f4"),
-                                   ("dE", "f4"),
-                                   ("PID", "u4"),
-                                   ("semantic_label", "u4")],
-                                  align = True),
-                 "inference": np.dtype([("eventID", "u4"),
-                                        ("x", "f4"),
-                                        ("y", "f4"),
-                                        ("z", "f4"),
-                                        ("dE", "f4"),
-                                        ("dE_err", "f4"),
-                                    ],
-                                       align = True),
-                 "evinfo": np.dtype([("eventID", "u4"),
-                                     ("primaryPID", "i4")],
-                                    align = True),
-                 }
+output_dtypes.update({"inference": np.dtype([("eventID", "u4"),
+                                             ("x", "f4"),
+                                             ("y", "f4"),
+                                             ("z", "f4"),
+                                             ("dE", "f4"),
+                                             ("dE_err", "f4"),
+                                         ],
+                                            align = True)})
 
 def write_to_output(outfile, evHits, evEdep, evInf, evEv):
     nHits_prev = len(outfile['hits'])
@@ -74,8 +57,10 @@ def main(args):
     else:
         infilePath = manifest['trainfilePath'] 
     if os.path.isdir(infilePath[0]):
-        infileList = [os.path.join(infilePath[0], thisFile) 
-                      for thisFile in os.listdir(infilePath[0])]
+        infileList = sum(([os.path.join(thisPath, thisFile) 
+                           for thisFile in os.listdir(thisPath)]
+                           for thisPath in infilePath),
+                          start = [])
         print ("loading files from list", infileList)
     else:
         infileList = infilePath

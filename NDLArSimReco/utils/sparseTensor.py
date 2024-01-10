@@ -234,6 +234,214 @@ class array_to_sparseTensor_class_homog(transform):
     
         return inference, PIDlabel
 
+class array_to_sparseTensor_primE(transform):
+    # def __call__(self, inferenceList, edepList, evInfoList):
+    def __call__(self, inferenceList, evInfoList):
+        ME.clear_global_coordinate_manager()
+
+        infCoordTensors = []
+        infFeatureTensors = []
+    
+        totE = []
+        primE = []
+    
+        # for inference, edep, evinfo in zip(inferenceList, edepList, evInfoList):
+        for inference, evinfo in zip(inferenceList, evInfoList):
+
+            if self.augment:
+                diagFlip = np.random.choice([False, True])
+                if diagFlip:
+                    xKey, yKey = 'y', 'x'
+                else:
+                    xKey, yKey = 'x', 'y'
+                xFlip = np.random.choice([-1, 1])
+                yFlip = np.random.choice([-1, 1])
+            else:
+                xKey, yKey = 'x', 'y'
+                xFlip = 1
+                yFlip = 1
+
+            infX = xFlip*inference[xKey]
+            infY = yFlip*inference[yKey]
+            infZ = inference['z']
+            infDE = inference['dE']
+            infDE_err = inference['dE_err']
+
+            infCoords = torch.FloatTensor(np.array([infX, infY, infZ])).T
+            infFeature = torch.FloatTensor(np.array([infDE, infDE_err])).T
+
+            infCoordTensors.append(infCoords)
+            infFeatureTensors.append(infFeature)
+            
+            # totE.append(np.sum(edep['dE']))
+            primE.append(evinfo['primaryE'])
+            
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
+
+        inference = ME.SparseTensor(features = infFeature.to(device),
+                                    coordinates = infCoords.to(device))
+            
+        # self.totE = torch.FloatTensor(totE).to(device)
+        primE = torch.FloatTensor(primE).to(device)
+    
+        return inference, primE
+
+class array_to_sparseTensor_primE_homog(transform):
+    # def __call__(self, inferenceList, edepList, evInfoList):
+    def __call__(self, inferenceList, evInfoList):
+        ME.clear_global_coordinate_manager()
+
+        infCoordTensors = []
+        infFeatureTensors = []
+
+        totE = []
+        primE = []
+    
+        # for inference, edep, evinfo in zip(inferenceList, edepList, evInfoList):
+        for inference, evinfo in zip(inferenceList, evInfoList):
+
+            if self.augment:
+                diagFlip = np.random.choice([False, True])
+                if diagFlip:
+                    xKey, yKey = 'y', 'x'
+                else:
+                    xKey, yKey = 'x', 'y'
+                xFlip = np.random.choice([-1, 1])
+                yFlip = np.random.choice([-1, 1])
+            else:
+                xKey, yKey = 'x', 'y'
+                xFlip = 1
+                yFlip = 1
+
+            infX = xFlip*inference[xKey]
+            infY = yFlip*inference[yKey]
+            infZ = inference['z']
+            infDE = inference['dE']
+            infDE_err = np.ones_like(inference['dE_err'])
+
+            infCoords = torch.FloatTensor(np.array([infX, infY, infZ])).T
+            infFeature = torch.FloatTensor(np.array([infDE, infDE_err])).T
+
+            infCoordTensors.append(infCoords)
+            infFeatureTensors.append(infFeature)
+
+            # totE.append(np.sum(edep['dE']))
+            
+            primE.append(evinfo['primaryE'])
+            
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
+
+        self.inference = ME.SparseTensor(features = infFeature.to(device),
+                                         coordinates = infCoords.to(device))
+
+        # self.totE = torch.FloatTensor(totE).to(device)
+            
+        self.primE = torch.FloatTensor(primE).to(device)
+    
+        return self.inference, self.primE
+
+class array_to_sparseTensor_dEdx(transform):
+    def __call__(self, inferenceList, evInfoList):
+        ME.clear_global_coordinate_manager()
+
+        infCoordTensors = []
+        infFeatureTensors = []
+    
+        dEdx = []
+    
+        for inference, evinfo in zip(inferenceList, evInfoList):
+
+            if self.augment:
+                diagFlip = np.random.choice([False, True])
+                if diagFlip:
+                    xKey, yKey = 'y', 'x'
+                else:
+                    xKey, yKey = 'x', 'y'
+                xFlip = np.random.choice([-1, 1])
+                yFlip = np.random.choice([-1, 1])
+            else:
+                xKey, yKey = 'x', 'y'
+                xFlip = 1
+                yFlip = 1
+
+            infX = xFlip*inference[xKey]
+            infY = yFlip*inference[yKey]
+            infZ = inference['z']
+            infDE = inference['dE']
+            infDE_err = inference['dE_err']
+
+            infCoords = torch.FloatTensor(np.array([infX, infY, infZ])).T
+            infFeature = torch.FloatTensor(np.array([infDE, infDE_err])).T
+
+            infCoordTensors.append(infCoords)
+            infFeatureTensors.append(infFeature)
+            
+            dEdx.append(evinfo['start_dEdx'])
+            
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
+
+        inference = ME.SparseTensor(features = infFeature.to(device),
+                                    coordinates = infCoords.to(device))
+            
+        dEdx = torch.FloatTensor(dEdx).to(device)
+    
+        return inference, dEdx
+
+class array_to_sparseTensor_dEdx_homog(transform):
+    def __call__(self, inferenceList, evInfoList):
+        ME.clear_global_coordinate_manager()
+
+        infCoordTensors = []
+        infFeatureTensors = []
+    
+        dEdx = []
+    
+        for inference, evinfo in zip(inferenceList, evInfoList):
+
+            if self.augment:
+                diagFlip = np.random.choice([False, True])
+                if diagFlip:
+                    xKey, yKey = 'y', 'x'
+                else:
+                    xKey, yKey = 'x', 'y'
+                xFlip = np.random.choice([-1, 1])
+                yFlip = np.random.choice([-1, 1])
+            else:
+                xKey, yKey = 'x', 'y'
+                xFlip = 1
+                yFlip = 1
+
+            infX = xFlip*inference[xKey]
+            infY = yFlip*inference[yKey]
+            infZ = inference['z']
+            infDE = inference['dE']
+            infDE_err = np.ones_like(inference['dE_err'])
+
+            infCoords = torch.FloatTensor(np.array([infX, infY, infZ])).T
+            infFeature = torch.FloatTensor(np.array([infDE, infDE_err])).T
+
+            infCoordTensors.append(infCoords)
+            infFeatureTensors.append(infFeature)
+            
+            dEdx.append(evinfo['start_dEdx'])
+            
+        infCoords, infFeature = ME.utils.sparse_collate(infCoordTensors,
+                                                        infFeatureTensors,
+                                                        dtype = torch.int32)
+
+        inference = ME.SparseTensor(features = infFeature.to(device),
+                                    coordinates = infCoords.to(device))
+            
+        dEdx = torch.FloatTensor(dEdx).to(device)
+    
+        return inference, dEdx
+
 class array_to_sparseTensor_totE(transform):
     def __call__(self, inferenceList, edepList):
         ME.clear_global_coordinate_manager()
@@ -650,6 +858,10 @@ class TransformFactoryClass:
     map = {'array_to_sparseTensor': array_to_sparseTensor,
            'array_to_sparseTensor_class': array_to_sparseTensor_class,
            'array_to_sparseTensor_class_homog': array_to_sparseTensor_class_homog,
+           'array_to_sparseTensor_primE': array_to_sparseTensor_primE,
+           'array_to_sparseTensor_primE_homog': array_to_sparseTensor_primE_homog,
+           'array_to_sparseTensor_dEdx': array_to_sparseTensor_dEdx,
+           'array_to_sparseTensor_dEdx_homog': array_to_sparseTensor_dEdx_homog,
            'array_to_sparseTensor_class_gt': array_to_sparseTensor_class_gt,
            'array_to_sparseTensor_class_lndsm': array_to_sparseTensor_class_lndsm,
            'array_to_sparseTensor_totE': array_to_sparseTensor_totE,

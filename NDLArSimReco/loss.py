@@ -58,9 +58,8 @@ class MSE_to_scalar (loss):
         """
         return outputSparseTensor.features[:,0],
     def truth_map(self, truth):
-        return truth
+        return truth.T
     def loss(self, truth, pred):
-        print (truth, pred)
         return nn.MSELoss()(pred, truth)
 
 class NLL_homog (loss):
@@ -143,6 +142,30 @@ class NLL_moyal (loss):
         
         LL = torch.sum(logp)/len(y)
 
+        return -LL
+
+class NLL_scalar (loss):
+    def feature_map(self, outputSparseTensor):
+        mean = outputSparseTensor.features[:,0]
+
+        epsilon = 1.e-2
+        sigma = torch.exp(outputSparseTensor.features[:,1]) + epsilon
+
+        return mean, sigma
+    def truth_map(self, truth):
+        return truth.T
+    def loss(self, truth, mean, sigma):
+        # print ("inpts", truth, mean, sigma)
+        diff = (mean - truth)
+
+        # print ("diffs", diff)
+        
+        logp = -0.5*torch.pow(diff/sigma, 2) - torch.log(sigma) # + np.log(np.sqrt(2*np.pi)), ignored
+
+        # print ("logp", logp)
+
+        LL = torch.sum(logp)/len(diff)
+        
         return -LL
 
 class voxOcc (loss):
@@ -318,8 +341,7 @@ class NLL_voxOcc_softmax_masked (loss):
         
         l = 1
         return l*NLL + occupancyLoss
-        # return NLL
-
+        
 class MSE_voxOcc_softmax_masked (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]
@@ -357,8 +379,7 @@ class MSE_voxOcc_softmax_masked (loss):
         
         l = 1
         return l*MSE + occupancyLoss
-        # return NLL
-
+        
 class MSE_voxOcc_softmax_masked_totE (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]
@@ -405,8 +426,7 @@ class MSE_voxOcc_softmax_masked_totE (loss):
         
         l = 1
         return l*MSE + occupancyLoss + energyLoss
-        # return NLL
-
+        
 class NLL_voxOcc_softmax_masked_inference (loss):
     def feature_map(self, outputSparseTensor):
         mean = outputSparseTensor.features[:,0]

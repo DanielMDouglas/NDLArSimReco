@@ -199,7 +199,7 @@ class DataLoaderWithEvinfo (GenericDataLoader):
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
         
         return self.hits_ev, self.edep_ev, self.evinfo_ev        
-
+        
 class ClassifierDataLoader (GenericDataLoader):
     """
     Dataloader which loads upstream inferences and image primary PID
@@ -213,6 +213,27 @@ class ClassifierDataLoader (GenericDataLoader):
         inference_mask = self.currentFile['inference']['eventID'] == event_id
         self.inference_ev = self.currentFile['inference'][inference_mask]
         
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+        
+        return self.inference_ev, self.evinfo_ev
+
+class EvInfoDataLoader (GenericDataLoader):
+    """
+    Dataloader which loads upstream inferences and image primary PID
+    """
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        # inference_mask = np.logical_and(self.currentFile['inference']['eventID'] == event_id,
+        #                                 self.currentFile['inference']['dE'] > 0.5)
+        inference_mask = self.currentFile['inference']['eventID'] == event_id
+        self.inference_ev = self.currentFile['inference'][inference_mask]
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+
         evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
         self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
         
@@ -444,6 +465,7 @@ class DataLoader_semanticSegmentation (GenericDataLoader):
 class DataLoaderFactoryClass:
     map = {'DataLoader': DataLoader,
            'ClassifierDataLoader': ClassifierDataLoader,
+           'EvInfoDataLoader': EvInfoDataLoader,
            'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
            'RawDataLoader': RawDataLoader,

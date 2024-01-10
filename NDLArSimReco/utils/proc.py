@@ -46,7 +46,7 @@ output_dtypes = {"hits": np.dtype([("eventID", "u4"),
                                   align = True),
                  "evinfo": np.dtype([("eventID", "u4"),
                                      ("primaryPID", "i4"),
-                                     ("primaryE", "f4")],
+                                     ("primaryE", "f4"),
                                      ("start_dEdx", "f4")],
                                     align = True),
                  }
@@ -79,6 +79,33 @@ def get_primary(dl, event_id):
     primMask = traj_ev['parentID'] == -1
     return traj_ev[primMask]
 
+def get_tracks(dl, event_id):
+    t0 = dl.t0_grp[event_id][0]
+
+    ti = t0 + dl.run_config['time_interval'][0]/dl.run_config['CLOCK_CYCLE']
+    tf = t0 + dl.run_config['time_interval'][1]/dl.run_config['CLOCK_CYCLE']
+
+    pckt_mask = (dl.packets['timestamp'] > ti) & (dl.packets['timestamp'] < tf)
+    packets_ev = dl.packets[pckt_mask]
+
+    tracks_ev_id = np.unique(EvtParser.packet_to_eventid(dl.assn,
+                                                         dl.tracks)[pckt_mask])
+    if len(tracks_ev_id) == 1:
+        track_mask = dl.tracks['eventID'] == tracks_ev_id
+    else:
+        try:
+            track_mask = np.logical_and(*[dl.tracks['eventID'] == thisev_id
+                                         for thisev_id in tracks_ev_id])
+        except ValueError:
+            print ("empty event found at EVID", tracks_event_id)
+            print ([dl.traj['eventID'] == thisev_id
+                    for thisev_id in tracks_ev_id])
+            return np.array([]), np.array([])
+
+    tracks_ev = dl.tracks[track_mask]
+
+    return tracks_ev
+
 def get_most_upstream_edep_pos(tracks):
     firstTrackMask = tracks['segment_id'] == np.min(tracks['segment_id'])
     position = np.array([tracks['x_start'][firstTrackMask],
@@ -98,7 +125,6 @@ def select_downstream_segments(tracks, pos, vector, distance):
     mask = downstreamMask*inFrontMask
 
     return tracks[mask]
-
 
 def write_to_output(outfile, evHits, evEdep, evEv):
     nHits_prev = len(outfile['hits'])
@@ -132,6 +158,7 @@ def main(args):
     for event_id in range(nEvents):
         hits, voxels = dl.load_image(event_id)
         prim = get_primary(dl, event_id)
+        evTrack = get_tracks(dl, event_id)
         primPID = prim['pdgId']
 
         primM = np.array([particle.Particle.from_pdgid(pid).mass
@@ -139,9 +166,10 @@ def main(args):
         primP2 = np.sum(np.power(prim['pxyz_start'], 2), axis = 1)
         primE = np.sqrt(primP2 + np.power(primM, 2))
 
-        momentum = [prim['pxyz_start'][2]/10,
-                    prim['pxyz_start'][1]/10,
-                    prim['pxyz_start'][0]/10]
+        print ("mom", prim['pxyz_start'])
+        momentum = [prim['pxyz_start'][0,2]/10,
+                    prim['pxyz_start'][0,1]/10,
+                    prim['pxyz_start'][0,0]/10]
         momentumDir = momentum/np.linalg.norm(momentum)
 
         upstreamPos = get_most_upstream_edep_pos(evTrack)
@@ -215,7 +243,7 @@ if __name__ == '__main__':
                         help = "detector config (default: nd-lar)")
     parser.add_argument('-o', '--outfile', type = str,
                         default = "testout.h5",
-                        help = "output")
+                        help = "output hdf5")
 
     args = parser.parse_args()
     
