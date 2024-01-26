@@ -284,7 +284,7 @@ class array_to_sparseTensor_primE(transform):
                                     coordinates = infCoords.to(device))
             
         # self.totE = torch.FloatTensor(totE).to(device)
-        primE = torch.FloatTensor(primE).to(device)
+        primE = torch.FloatTensor(np.array(primE)).to(device)
     
         return inference, primE
 
@@ -340,7 +340,7 @@ class array_to_sparseTensor_primE_homog(transform):
 
         # self.totE = torch.FloatTensor(totE).to(device)
             
-        self.primE = torch.FloatTensor(primE).to(device)
+        self.primE = torch.FloatTensor(np.array(primE)).to(device)
     
         return self.inference, self.primE
 

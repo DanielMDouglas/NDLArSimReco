@@ -40,12 +40,14 @@ def main(args):
 
     print ("initializing data loader...")
     dl = dataLoaderFactory[manifest['dataLoader']](infileList,
-                                                   batchSize = manifest['batchSize'],
+                                                   # batchSize = manifest['batchSize'],
+                                                   batchSize = 1,
                                                    sequentialLoad = True)
 
     net.load_checkpoint(args.checkpoint)
 
-    net.MCdropout()
+    # net.MCdropout()
+    net.eval()
     nBatches = args.nBatches
 
     transform = sparseTensor.transformFactory[manifest['transform']](augment = False)
@@ -64,34 +66,43 @@ def main(args):
         loss = net.criterion(output, truth)
         
         pbar.set_description("loss: "+str(round(loss.item(), 4)))
+        # print("result loss", round(loss.item(), 4))        
+        # loss = net.criterion(torch.ones_like(output), torch.ones_like(truth))
+        # print("fake loss", round(loss.item(), 4))
 
-        print (output.features)
+        # print (output.features)
         inferredE = output.features[:,0]
 
-        print (truth)
+        # print (truth)
         # print (transform.totE)
 
+        # print (inferredE)
         truthArr = truth.cpu().numpy().flatten()
         infArr = inferredE.detach().cpu().numpy().flatten()
+        # print (truthArr)
+        # print (infArr)
         trueE.append(truthArr)
         infE.append(infArr)
         
-        print (np.abs(truthArr - infArr)/truthArr)
-        print (np.max(np.abs(truthArr - infArr)/truthArr))
-        maxMask = np.max(np.abs(truthArr - infArr)/truthArr) == np.abs(truthArr - infArr)/truthArr
-        print (truthArr[maxMask], infArr[maxMask])
-        if np.abs(truthArr[maxMask][0] - infArr[maxMask][0])/truthArr[maxMask][0] > 5:
-            print ("thing")
-            torch.save(inpt.coordinates, 'funky_coords')
-            torch.save(inpt.features, 'funky_feats')
+        # print (np.abs(truthArr - infArr)/truthArr)
+        # print (np.max(np.abs(truthArr - infArr)/truthArr))
+        # maxMask = np.max(np.abs(truthArr - infArr)/truthArr) == np.abs(truthArr - infArr)/truthArr
+        # print (truthArr[maxMask], infArr[maxMask])
+        # if np.abs(truthArr[maxMask][0] - infArr[maxMask][0])/truthArr[maxMask][0] > 5:
+        #     print ("thing")
+        #     torch.save(inpt.coordinates, 'funky_coords')
+        #     torch.save(inpt.features, 'funky_feats')
         
         # print (truth, inferredE)
 
+    print (trueE)
+    print (infE)
+    
     trueE = np.concatenate(trueE)
     infE = np.concatenate(infE)
 
-    # print (trueE)
-    # print (infE)
+    print (trueE)
+    print (infE)
 
     print (np.max(np.abs(trueE - infE)/trueE))
 

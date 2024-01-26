@@ -24,8 +24,8 @@ from .layers import uresnet_layers, blocks
 from .trainLogging import *
 from .utils import sparseTensor
 
-# epochPerCKPT = 25
-epochPerCKPT = 1
+epochPerCKPT = 25
+# epochPerCKPT = 1
 
 lossDict = {'NLL': loss.NLL,
             'NLL_scalar': loss.NLL_scalar,

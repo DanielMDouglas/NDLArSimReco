@@ -6,11 +6,11 @@ import torch
 
 def loadManifestDict(manifest):
     """
-    Load the manifest diction from a dictionary or a yaml path
+    Load the manifest dictionary from a dictionary or a yaml path
     """
-    if type(manifest) == dict:
+    if type(manifest) == dict: # if arg is a dict, do nothing
         manifestDict = manifest
-    elif type(manifest) == str:
+    elif type(manifest) == str: # if arg is a yaml path, load
         with open(manifest, 'r') as mf:
             manifestDict = yaml.load(mf, Loader = yaml.FullLoader)
             
@@ -19,17 +19,23 @@ def loadManifestDict(manifest):
     return manifestDict
 
 def check_equality(entryA, entryB):
-            equality = False
-            if type(entryA) == LogEntry and type(entryB) == LogEntry:
-                equality = (os.path.abspath(entryA.outDir) == os.path.abspath(entryB.outDir))
-            elif type(entryA) == str and type(entryB) == LogEntry:
-                equality = (os.path.abspath(entryA) == os.path.abspath(entryB.outDir))
-            elif type(entryA) == LogEntry and type(entryB) == str:
-                equality = (os.path.abspath(entryA.outDir) == os.path.abspath(entryB))
-            elif type(entryA) == str and type(entryB) == str:
-                equality = (os.path.abspath(entryA) == os.path.abspath(entryB))
+    """
+    Check if two log entries correspond to the same log file.
+    Log entries can be passed by file path or by LogEntry instance
+    This can probably be simplified...
+    """
 
-            return equality
+    equality = False
+    if type(entryA) == LogEntry and type(entryB) == LogEntry:
+        equality = (os.path.abspath(entryA.outDir) == os.path.abspath(entryB.outDir))
+    elif type(entryA) == str and type(entryB) == LogEntry:
+        equality = (os.path.abspath(entryA) == os.path.abspath(entryB.outDir))
+    elif type(entryA) == LogEntry and type(entryB) == str:
+        equality = (os.path.abspath(entryA.outDir) == os.path.abspath(entryB))
+    elif type(entryA) == str and type(entryB) == str:
+        equality = (os.path.abspath(entryA) == os.path.abspath(entryB))
+
+    return equality
 
 class LogManager:
     def __init__(self, network):
@@ -126,7 +132,11 @@ class LogManager:
         # instead of 2.
         loss_series = np.empty((0,3))
         for log_entry in self.entries:
-            loss_series = np.concatenate([loss_series, log_entry.get_loss()])
+            # if a loss file is missing for some reason, skip it
+            try: 
+                loss_series = np.concatenate([loss_series, log_entry.get_loss()])
+            except ValueError:
+                continue
         return loss_series
     
     def save_report(self):
