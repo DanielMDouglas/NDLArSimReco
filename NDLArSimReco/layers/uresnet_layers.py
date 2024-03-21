@@ -399,7 +399,7 @@ class UResNet(torch.nn.Module):
         return out
 
 class ResNetEncoder(torch.nn.Module):
-    def __init__(self, in_features, depth = 2, nFilters = 16, name='uresnet'):
+    def __init__(self, in_features, depth = 2, nFilters = 16, name='resnetencoder', **kwargs):
         super(ResNetEncoder, self).__init__()
 
         self.depth = depth # number of pool/unpool layers, not including input + output

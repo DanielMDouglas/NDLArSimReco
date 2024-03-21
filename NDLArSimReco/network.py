@@ -20,11 +20,10 @@ import tqdm
 import os
 
 from . import loss
-from .layers import uresnet_layers, blocks
+from .layers import uresnet_layers, blocks, sdp
 from .trainLogging import *
 from .utils import sparseTensor
 
-epochPerCKPT = 25
 # epochPerCKPT = 1
 
 lossDict = {'NLL': loss.NLL,
@@ -113,7 +112,8 @@ def init_layers(layerDictList, in_feat, D):
             layer_out_feat = int(layerDict['out_feat'])
             layer = uresnet_layers.ResNetEncoder(
                 layer_in_feat,
-                int(layerDict['depth']),
+                # int(layerDict['depth']),
+                **layerDict,
             )
             layer_in_feat = layer_out_feat
         elif layerDict['type'] == 'ResNetBlock':
@@ -208,6 +208,8 @@ def init_layers(layerDictList, in_feat, D):
         elif layerDict['type'] == 'SemanticSegmentationHeadPNN_simple':
             layer = blocks.SemanticSegmentationHeadPNN_simple(layer_in_feat)
             layer_in_feat = 1
+        else:
+            layer = None
 
         yield layer
         
@@ -236,9 +238,17 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         # load layer structure from the manifest
         self.layers = []
         for layer in init_layers(self.manifest['layers'], in_feat, D):
-            self.layers.append(layer)
+            if layer:
+                self.layers.append(layer)
                 
         self.network = nn.Sequential(*self.layers)
+
+        self.sdp = False
+        if 'SDP' in [layer['type'] for layer in self.manifest['layers']]:
+            self.sdp = True
+            self.network = sdp.SDP(self.network,
+                                   # num_outputs = 2,
+            )
         
         if 'lr' in self.manifest:
             self.lr = self.manifest['lr']
@@ -248,6 +258,8 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
                                     lr = self.lr)
             
     def forward(self, x):
+        print ("input", x)
+        print ("output", self.network(x))
         return self.network(x)
 
     def make_checkpoint(self, filename):
@@ -306,7 +318,7 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.eval()
         activate_dropout_children(self)
             
-    def trainLoop(self, dataLoader, dropout = False):
+    def trainLoop(self, dataLoader, dropout = False, verbose = False):
         """
         page through a training file, do forward calculation, evaluate loss, and backpropagate
         """
@@ -314,18 +326,31 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
         self.train()
         
         nEpochs = int(self.manifest['nEpochs'])
+        
+        if 'epochPerCKPT' in self.manifest:
+            epochPerCKPT = int(self.manifest['epochPerCKPT'])
+        else:
+            epochPerCKPT = 5
        
         report = False
         prevRemainder = 0
 
-        for i in tqdm.tqdm(range(nEpochs)):
+        # if you want a progress bar for epoch progress,
+        # but nested progress bars are don't always work 
+        # for i in tqdm.tqdm(range(nEpochs)): 
+        for i in range(nEpochs):
             if i < self.n_epoch:
                 print ("skipping epoch", i)
             else:
                 transform = sparseTensor.transformFactory[self.manifest['transform']]()
-                pbar = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
-                                 total = dataLoader.batchesPerEpoch)
-                for j, (inpt, truth) in pbar:
+
+                if verbose:
+                    iterator = tqdm.tqdm(enumerate(dataLoader.load(transform = transform)),
+                                         total = dataLoader.batchesPerEpoch)
+                else:
+                    iterator = enumerate(dataLoader.load(transform = transform))
+                                 
+                for j, (inpt, truth) in iterator:
                     if j < self.n_iter:
                         continue
                     else:
@@ -346,11 +371,12 @@ class ConfigurableSparseNetwork(ME.MinkowskiNetwork):
 
                         loss = self.criterion(output, truth)
  
-                        pbarMessage = " ".join(["epoch:",
-                                               str(self.n_epoch),
-                                               "loss:",
-                                               str(round(loss.item(), 4))])
-                        pbar.set_description(pbarMessage)
+                        if verbose:
+                            pbarMessage = " ".join(["epoch:",
+                                                    str(self.n_epoch),
+                                                    "loss:",
+                                                    str(round(loss.item(), 4))])
+                            iterator.set_description(pbarMessage)
                         self.training_report(loss)
                 
                         # save a checkpoint of the model every 10% of an epoch

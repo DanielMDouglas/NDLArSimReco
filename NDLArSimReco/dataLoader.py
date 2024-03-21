@@ -239,6 +239,22 @@ class EvInfoDataLoader (GenericDataLoader):
         
         return self.inference_ev, self.evinfo_ev
 
+class EdepPrimEDataLoader (GenericDataLoader):
+    """
+    Dataloader which loads ground truth edep-sim and image primary PID/energy
+    """
+    def load_image(self, eventIndex):
+        # load a given event from the currently loaded file
+        event_id = np.unique(self.currentFile['evinfo']['eventID'])[eventIndex]
+
+        edep_mask = self.currentFile['edep']['eventID'] == event_id
+        self.edep_ev = self.currentFile['edep'][edep_mask]
+        
+        evinfo_mask = self.currentFile['evinfo']['eventID'] == event_id
+        self.evinfo_ev = self.currentFile['evinfo'][evinfo_mask]
+
+        return self.edep_ev, self.evinfo_ev
+
 class EnergyRegressionDataLoader (GenericDataLoader):
     """
     Dataloader which loads upstream inference and event primary energy
@@ -466,6 +482,7 @@ class DataLoaderFactoryClass:
     map = {'DataLoader': DataLoader,
            'ClassifierDataLoader': ClassifierDataLoader,
            'EvInfoDataLoader': EvInfoDataLoader,
+           'EdepPrimEDataLoader': EdepPrimEDataLoader,
            'ClassifierDataLoaderGT': ClassifierDataLoaderGT,
            'ClassifierDataLoaderLNDSM': ClassifierDataLoaderLNDSM,
            'RawDataLoader': RawDataLoader,

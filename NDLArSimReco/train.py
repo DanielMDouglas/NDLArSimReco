@@ -25,7 +25,7 @@ def main(args):
                            for thisFile in os.listdir(thisPath)]
                            for thisPath in infilePath),
                          start = [])
-        print ("loading files from list", infileList)
+        print ("loading files from directory", infilePath)
     else:
         infileList = infilePath
         print ("loading files from list", infileList)
@@ -57,7 +57,7 @@ def main(args):
         print ("resuming training at epoch {}, iteration {}".format(net.n_epoch, net.n_iter))
             
     print ("training...")
-    net.trainLoop(dl)
+    net.trainLoop(dl, verbose = args.verbose)
 
     checkpointFile = os.path.join(net.outDir,
                                   'checkpoint_final_{}_{}.ckpt'.format(manifest['nEpochs'], 0))
