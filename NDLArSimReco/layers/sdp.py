@@ -3,6 +3,8 @@ import numpy as np
 import MinkowskiEngine as ME
 ME.set_sparse_tensor_operation_mode(ME.SparseTensorOperationMode.SHARE_COORDINATE_MANAGER)
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # PyTorch SDP wrapper implementation.  (tested with PyTorch version 1.13.1)
 
 
@@ -26,41 +28,29 @@ class SDP(torch.nn.Module):
 
         batches = torch.unique(inpt.coordinates[:,0])
 
-        pred_means = []
-        pred_std_sdp = []
-        
-        for batchInd in batches:
-            batch_inpt_mask = inpt.coordinates[:,0] == batchInd
-            batch_inpt_std = inpt.features[batch_inpt_mask,1]
-            batch_inpt_st = ME.SparseTensor(features = inpt.features[batch_inpt_mask,0,None],
-                                            coordinates = inpt.coordinates[batch_inpt_mask])
-            batch_inpt_st.features.requires_grad_()
+        pred_sdp_var = []
 
-            batch_pred = self.net(batch_inpt_st)
-
-            batch_pred_mean = batch_pred.features[batchInd]
-
+        for i in batches:
             jac = torch.autograd.grad(
-                batch_pred_mean,
-                batch_inpt_st.features,
+                pred_mean[i],
+                x.features,
                 create_graph=self.create_graph, retain_graph=True,
                 allow_unused = True,
             )[0]
 
-            sigma_sdp = torch.inner(jac.T, torch.inner(torch.diag(batch_inpt_std**2), jac.T).T)
+            nInputs = x.coordinates[:,0] == i
+            mask = x.coordinates[:,0] == i
 
-            pred_means.append(batch_pred_mean)
-            pred_std_sdp.append(sigma_sdp)
+            batch_inpt_std = inpt_std[mask]
+            batchJac = jac[mask]
 
-        pred_mean = torch.Tensor(pred_means)
-        pred_std_sdp = torch.Tensor(pred_std_sdp)
+            pred_sdp_var.append(torch.inner(batchJac.T,
+                                            torch.inner(torch.diag(batch_inpt_std**2),
+                                                        batchJac.T).T))
 
-        print (pred_mean.get_device())
-        print (pred_std_sdp.get_device())
-        print (torch.stack((pred_mean, pred_std_sdp)).get_device())
-        print (y.coordinates.get_device())
-        
-        result = ME.SparseTensor(features = torch.stack((pred_mean, pred_std_sdp)).T,
+        pred_sdp_var = torch.Tensor(pred_sdp_var).to(device)
+            
+        result = ME.SparseTensor(features = torch.stack((pred_mean, pred_sdp_var)).T,
                                  coordinates = y.coordinates)
 
         return result
