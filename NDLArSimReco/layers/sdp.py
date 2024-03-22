@@ -14,38 +14,53 @@ class SDP(torch.nn.Module):
         self.create_graph = create_graph
 
     def forward(self, inpt):
-        print (inpt.features[:,0,None].shape)
         x = ME.SparseTensor(features = inpt.features[:,0,None],
                             coordinates = inpt.coordinates)
-        std = inpt.features[:,1]
-        print ("sdp forward inpt", x)
-        print ("sdp forward std", std)
-        assert len(x.shape) >= 2, x.shape  # First dimension is a batch dimension.
 
-        # Two separate implementations:
-        # the top one is for larger models and the bottom for smaller models.
-        x.requires_grad_()
+        inpt_mean = inpt.features[:,0]
+        inpt_std = inpt.features[:,1]
+
+        x.features.requires_grad_()
         y = self.net(x)
-        mean = y.features[:,0]
-        print (y)
-        print (mean)
-        jacs = []
-        for i in range(self.num_outputs):
-            jacs.append(torch.autograd.grad(
-                mean.sum(0), x.features,
-                # mean[i].sum(0), x,
-                create_graph=self.create_graph, retain_graph=True
-            )[0])
-        jac = torch.stack(jacs, dim=1).reshape(
-            x.shape[0], self.num_outputs, np.prod(x.shape[1:])
-        )
+        pred_mean = y.features[:,0]
 
-        # input std is a vector, assume diagonal input covariance
-        print (std.shape)
-        print (jac.shape, std.shape, torch.diag(std**2).shape)
-        cov_inpt = torch.diag(std**2)
-        # print (torch.inner(cov_inpt, jac.transpose(-1, 0)))
-        # print (torch.bmm(cov_inpt, jac.transpose(-1, -2)))
-        cov = torch.inner(jac, torch.inner(cov_inpt, jac.transpose(-1, 0)))
-       
-        return y, cov
+        batches = torch.unique(inpt.coordinates[:,0])
+
+        pred_means = []
+        pred_std_sdp = []
+        
+        for batchInd in batches:
+            batch_inpt_mask = inpt.coordinates[:,0] == batchInd
+            batch_inpt_std = inpt.features[batch_inpt_mask,1]
+            batch_inpt_st = ME.SparseTensor(features = inpt.features[batch_inpt_mask,0,None],
+                                            coordinates = inpt.coordinates[batch_inpt_mask])
+            batch_inpt_st.features.requires_grad_()
+
+            batch_pred = self.net(batch_inpt_st)
+
+            batch_pred_mean = batch_pred.features[batchInd]
+
+            jac = torch.autograd.grad(
+                batch_pred_mean,
+                batch_inpt_st.features,
+                create_graph=self.create_graph, retain_graph=True,
+                allow_unused = True,
+            )[0]
+
+            sigma_sdp = torch.inner(jac.T, torch.inner(torch.diag(batch_inpt_std**2), jac.T).T)
+
+            pred_means.append(batch_pred_mean)
+            pred_std_sdp.append(sigma_sdp)
+
+        pred_mean = torch.Tensor(pred_means)
+        pred_std_sdp = torch.Tensor(pred_std_sdp)
+
+        print (pred_mean.get_device())
+        print (pred_std_sdp.get_device())
+        print (torch.stack((pred_mean, pred_std_sdp)).get_device())
+        print (y.coordinates.get_device())
+        
+        result = ME.SparseTensor(features = torch.stack((pred_mean, pred_std_sdp)).T,
+                                 coordinates = y.coordinates)
+
+        return result
